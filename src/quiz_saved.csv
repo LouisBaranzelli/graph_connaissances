@@ -1,0 +1,64 @@
+question;reponse;state;point;date;historique;days_before_last
+Qu'est-ce que RDS (Acronyme)?; Relational Database Service;1;0.5;2024-03-09;nan 2024-03-09/;2.0
+Quel langage RDS utilise-t-il ?; SQL;2;1.0;2024-03-11;nan 2024-03-11/;3.0
+RDS est OLAP ou OLTP ? ; OLTP ;1;0.5;2024-03-09;nan 2024-03-09/;2.0
+A quoi sert RDS ?; RDS sert a creer des bases de donnees gerees par AWS;1;1.0;2024-03-09; 2024-03-09/;2.0
+Donnez 3 exemples de bases de donnees gerees par le langage SQL ; PostgreSQL/MySQL/MariaDB/Oracle/Microsoft SQL Server/Aurora (base de donnees proprietaire d'AWS);1;3.0;2024-03-09;nan 2024-03-09/;2.0
+Pourquoi deployer une base de donnees sur RDS plutot que sur un EC2 ? (8 elements) ; Patching du systeme d'exploitation + sauvegarde + surveillance + Replique de lecture + Multi-AZ pour la recuperation apres sinistre + fenetre de maintenance pour la mise a jour + mise a l'echelle + stockage sur EBS;2;3.0;2024-03-11;nan 2024-03-11/;3.0
+Donnez un inconvenient de RDS ? ; Pas de possibilite de SSH ;1;1.0;2024-03-09;nan 2024-03-09/;2.0
+Quels sont les 2 bases de donnees supportees par Aurora ? ; PostgreSQL et MySQL ;1;2.0;2024-03-10; 2024-03-09/ 2024-03-10/;1.0
+Avantage et 1 inconvenient de Aurora par rapport a RDS ; Plus cher mais plus efficace ;2;1.0;2024-03-11;nan 2024-03-11/;3.0
+A quoi sert le READ REplicas ? ; Pour mettre a l'echelle la charge de lecture (scalability) (jusqu'a 15 repliques);2;1.0;2024-03-11;nan 2024-03-11/;3.0
+Quelle est la difference entre Read Replica et Multi-AZ ? ; Read Replica : l'ecriture se fait dans la base principale et il y a plusieurs replicas de lecture, tandis que Multi-AZ, l'ecriture et la lecture se font dans la base principale (unique), mais elle est repliquee dans une autre AZ ;2;2.0;2024-03-11;nan 2024-03-11/;3.0
+Quelle est la difference entre RDS Deployments: Multi-Region et Read Replicas, Multi-AZ ? ; Pour Multi-Region, l'ecriture se fait dans un registre unique d'une seule region, mais la lecture se fait dans la region locale (des repliques de la base de donnees principale sont creees dans chaque region);2;1.5;2024-03-11;nan 2024-03-11/;3.0
+Quelles sont les 2 bases de donnees gerees par Amazon ElastiCache ?; Redis ou Memcached;1;1.5;2024-03-11; 2024-03-09/ 2024-03-09/ 2024-03-10/ 2024-03-11/;1.0
+Quelle est la caracteristique d'ElastiCache ?; ElastiCache utilise des caches qui sont comme des bases de donnees temporaires, stockant les informations en memoire pour les recuperer tres rapidement;2;1.5;2024-03-11;nan 2024-03-11/;3.0
+Pour quelle tache particuliere ElastiCache est-elle adaptee ?; Pour la lecture intensive, reduisant la charge sur les bases de donnees et augmentant la vitesse de recuperation des donnees;2;1.0;2024-03-11;nan 2024-03-11/;3.0
+DynamoDB est-elle une base de donnees SQL ou NoSQL ?; NoSQL;2;1.0;2024-03-11;nan 2024-03-11/;3.0
+DynamoDB est-elle basee sur des lignes ou des colonnes ?; Basee sur les lignes;1;0.5;2024-03-10; 2024-03-09/ 2024-03-09/ 2024-03-10/;1.0
+Quelles sont les caracteristiques de DynamoDB ?; DynamoDB peut gerer des millions de requetes par seconde et la base de donnees peut atteindre des centaines de teraoctets grace a son systeme de stockage cle-valeur;1;1.5;2024-03-11;nan 2024-03-09/ 2024-03-10/ 2024-03-11/;1.0
+Donnez 3 avantages de DynamoDB ?; Haute disponibilite (replication dans 3 zones de disponibilite), serverless, faible latence, mise a l'echelle automatique, stockage standard ou a acces peu frequent;1;2.0;2024-03-11; 2024-03-09/ 2024-03-10/ 2024-03-11/;1.0
+Quelle est la caracteristique de DynamoDB Accelerator - DAX ?; Il s'agit de DynamoDB avec une gestion de cache integree pour des performances ameliorees;2;1.0;2024-03-11;nan 2024-03-11/;3.0
+Quelle est la caracteristique de DynamoDB Global Tables ?; DynamoDB accessible avec une faible latence dans differentes regions;2;1.0;2024-03-11;nan 2024-03-11/;3.0
+Donnez 3 caracteristiques de Redshift ?; Based on postgreSQL , chargement de donnees toutes les heures, OLAP (traitement analytique en ligne), stockage par colonnes, execution de requetes massivement parallele;1;1.5;2024-03-09; 2024-03-09/;2.0
+Donnez les cas d'utilisation de Redshift serverless ?; Reporting, applications de tableau de bord, analyse en temps reel;1;1.0;2024-03-10; 2024-03-09/ 2024-03-10/;1.0
+Qu'est-ce que EMR ?; Elastic MapReduce ;2;0.5;2024-03-11;nan 2024-03-11/;3.0
+A quoi sert EMR ? ; A creer des clusters Hadoop pour effectuer des analyses sur des donnees volumineuses (big data);1;1.0;2024-03-10; 2024-03-09/ 2024-03-10/;1.0
+Donnez 2 cas d'utilisation d'Amazon EMR ?; Traitement de donnees, apprentissage automatique, indexation web, big data...;1;1.0;2024-03-10; 2024-03-09/ 2024-03-09/ 2024-03-10/;1.0
+A quoi sert Amazon Athena ?; Amazon Athena est une instance qui utilise des requetes SQL pour interroger le contenu d'un bucket S3 (CSV, JSON, Avro ou Parquet);2;1.5;2024-03-11;nan 2024-03-11/;3.0
+Qu'est-ce qu'Amazon QuickSight ?; Amazon QuickSight est un service integre a RDS, Aurora, Athena, Redshift et S3 qui permet de creer des tableaux de bord interactifs ;1;1.5;2024-03-09; 2024-03-09/;2.0
+Qu'est-ce qu'Amazon Neptune ?; Amazon Neptune est une base de donnees orientee graphe ;1;1.0;2024-03-09;nan 2024-03-09/;2.0
+Qu'est-ce qu'Amazon Timestream ?; Amazon Timestream est une base de donnees de series chronologiques ;1;1.0;2024-03-09; 2024-03-09/;2.0
+Quelle est la base est le service le plus proche d'une base de données MongoDB; DocumentDB;1;1.0;2024-03-10;nan 2024-03-09/ 2024-03-10/;1.0
+Quel genre de données sont stockées dans DocumentDB; des fichiers JSON;1;0.5;2024-03-10; 2024-03-09/ 2024-03-10/;1.0
+Quel service pour gérer les time series ?; Amazon TimeStream;1;1.0;2024-03-09;nan 2024-03-09/;2.0
+Quel service pour gérer les transactions financières ?; Amazon QLDB ;1;1.0;2024-03-09; 2024-03-09/;2.0
+Quel est l'acronyme de QLDB et quelle est sa particularité ; Quantum Ledger Database, on ne peut pas modifier ou supprimer une entrée;1;2.0;2024-03-09; 2024-03-09/;2.0
+Quelle est la différence entre Amazon Managed Blockchain et QLDB ; QLDB est centralisé en accord avec la réglementation financière;1;1.0;2024-03-09;nan 2024-03-09/;2.0
+Citer 2 frameworks compatibles avec Amazon Managed Blockchain ; Hyperledger Fabric & Ethereum ;1;2.0;2024-03-11;nan 2024-03-09/ 2024-03-10/ 2024-03-11/;1.0
+À quoi sert AWS Glue ?; Simplifie et automatise le processus d'intégration, de nettoyage et de transformation des données;1;1.5;2024-03-09;nan 2024-03-09/;2.0
+Quel est le meilleur service pour faire de l'In-memory Database ; ElastiCache;1;1.0;2024-03-09; 2024-03-09/;2.0
+Quelle est le nom du référentiel central qui range toutes les métadonnées dans AWS Glue ; Glue Data Catalog ;1;1.0;2024-03-11;nan 2024-03-09/ 2024-03-10/ 2024-03-11/;1.0
+Quel est le service qui est un data warehouse à l'échelle du pétaoctet ?; Redshift ;1;1.0;2024-03-10;nan 2024-03-09/ 2024-03-10/;1.0
+Parmi ces services, lesquels sont sans serveur : QLDB, Redshift, Neptune, Athena, QuickSight, DynamoDB, Aurora, DocumentDB, RDS, Glue, ElastiCache, Timestream, EMR ; DynamoDB,       QuickSight, QLDB, Timestream, Glue, Athena ;1;2.0;2024-03-11; 2024-03-09/ 2024-03-10/ 2024-03-11/;1.0
+Quel service utiliser pour lancer un conteneur Docker ?; Amazon ECS (Elastic Container Service) ;1;1.0;2024-03-10;nan 2024-03-09/ 2024-03-10/;1.0
+Quelle est la différence entre Fargate et ECS ?; Fargate est sans serveur et ne nécessite pas le provisionnement d'instances EC2 ;1;1.0;2024-03-11;nan 2024-03-09/ 2024-03-10/ 2024-03-11/;1.0
+À quoi sert ECR ? Elastic Container Registry sert à stocker les images Docker ; 0 ;2;;2024-03-11;nan 2024-03-11/;3.0
+Comment est géré le tarif d'une fonction Lambda ?; En fonction du temps et de la mémoire allouée ;1;1.0;2024-03-09; 2024-03-09/;2.0
+À quoi sert Amazon API Gateway ?; C'est un service pour créer et maintenir des API (sans serveur et scalable) ;1;1.0;2024-03-10;nan 2024-03-09/ 2024-03-10/;1.0
+Quels sont les deux services à mettre entre un client et une base de données DynamoDB ?; Amazon API Gateway + Fonction Lambda ;1;1.0;2024-03-10; 2024-03-09/ 2024-03-10/;1.0
+Quelle est la différence entre Batch et Lambda ? ; Batch n'a pas de limite de temps, Lambda a une limite de temps de fonctionnement, et Lambda est sans serveur et a un espace de disque temporairement limité ;1;1.0;2024-03-10;2024-03-09/ 2024-03-10/;1.0
+Quelle est la définition de Lightsail ? ; Lightsail offre des instances de serveurs virtuels pré-configurées avec un ensemble fixe de ressources matérielles ;1;1.0;2024-03-10;2024-03-09/ 2024-03-10/;1.0
+Quels sont les 2 cas d'utilisation de Lambda ?; Générer des miniatures (thumbnails), Exécuter des tâches périodiques sans serveur (Run serverless cron job) ;1;1.0;2024-03-11;nan 2024-03-10/ 2024-03-11/;1.0
+Quel service une entreprise peut-elle utiliser pour exécuter des milliers de tâches sans avoir à gérer les ressources informatiques ? ; AWS Batch ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+CloudFormation est un infrastructure as code, qu'est-ce que cela signifie ? ; Les ressources ne sont pas créées manuellement, mais à travers du code (Template) (idéal pour le contrôle) ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+À quoi sert CDK (Cloud Development Kit) ? ; À définir une infrastructure cloud en utilisant n'importe quel langage ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+Quelle est la différence entre Beanstalk et CloudFormation ? ; Beanstalk est un service géré (PaaS), tandis que CloudFormation est un service d'infrastructure en tant que code (IaaS) ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+Pourquoi AWS CodeDeploy est-il hybride ? ; Parce qu'il permet de déployer du code sur des instances EC2 ou locales (on premise) ;1;1.0;2024-03-11;nan 2024-03-10/ 2024-03-11/;1.0
+Quel est l'équivalent de GitHub sur AWS ? ; CodeCommit ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+Quel service orchestre l'ensemble des services pour le développement CI/CD ? ; CodePipeline (automatise un pipeline) ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+Quel est l'IDE développé par AWS ? ; Cloud9 ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+Avec quoi peut-on patcher l'ensemble de ses instances et serveurs sur site ? ; SSM (Systems Manager) ;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+Quelles sont les 3 façons d'accéder à une instance EC2 ? ; Ouvrir le port 22 et établir une connexion SSH, Utiliser EC2 Instance Connect, Utiliser Session Manager avec un rôle IAM approprié ;1;2.0;2024-03-11;nan 2024-03-10/ 2024-03-11/;1.0
+Ou stocker ses librairies?; CodeArtifact;1;1.0;2024-03-10;nan 2024-03-10/;1.0
+Quel outil permet de developper et deployer rapidement une application sur AWS avec une interface utilisateur unifiée?; Codestar;1;1.0;2024-03-10;nan 2024-03-10/;1.0
