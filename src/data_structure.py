@@ -2,7 +2,40 @@ from typing import Optional, Dict, Union, List
 from datetime import date
 import re
 
-class Relation:
+
+class CommonStructureDataNeo4j():
+
+    '''
+    Implementation of the common structure between Node and relation
+    '''
+
+    def __init__(self, name: str, category: str, default_properties: Dict,  properties: Optional[Dict] = None):
+
+        self.name = name
+        self.id = {'name': name} # Dict of the ID Parameter
+        self.properties = properties
+        self.default_properties = default_properties
+
+    def get_properties(self):
+        if self.properties is not None:
+            # remove the id key if inside the properties
+            for key, _ in self.id.items():
+                if key in list(self.properties.keys()):
+                    del self.properties[key]
+        else:
+            self.properties = self.default_properties
+
+        # check if no missing element
+        for key, value in self.default_properties.items():
+            # mandatory setting properties
+            if key not in list(self.properties.keys()):
+                self.properties.update({key: value})
+            # # value must be between ""
+            # if not re.match(r'^".*"$', self.update_properties[key]):
+            #     self.update_properties[key] = f"'{self.update_properties[key]}'"
+
+
+class Relation(CommonStructureDataNeo4j):
     def __init__(self, name: str, category_target: str, properties: Optional[Dict] = None):
 
         '''
@@ -11,67 +44,34 @@ class Relation:
         :param category_target: type of the object resultant of the relation ship
         '''
 
-        self.name = name
+        self.default_properties = {'creation': f'{str(date.today())}'}
+        super().__init__(name=name,
+                         category=category_target,
+                         default_properties=self.default_properties,
+                         properties=properties)
+
         self.category = category_target.capitalize()
         self.relation = "_".join(name.split()).upper()
 
-        id_properties = {'name': self.name}
-
-        mandatory_settings = {'creation': f'{str(date.today())}'}
-        if properties is not None:
-            self.update_properties = properties
-            # remove the id key if inside the properties
-            for key, _ in id_properties.items():
-                if key in list(self.update_properties.keys()):
-                    del self.update_properties[key]
-        else:
-            self.update_properties = mandatory_settings
-
-        # check if no missing element
-        for key, value in mandatory_settings.items():
-            # mandatory setting properties
-            if key not in list(self.update_properties.keys()):
-                self.update_properties.update({key: value})
-            # value must be between ""
-            if not re.match(r'^".*"$', self.update_properties[key]):
-                self.update_properties[key] = f"'{self.update_properties[key]}'"
-
-        self.syntax_properties = '{' + f'''{', '.join([str(f'{key}: "{str(value)}"') for key, value in id_properties.items()])}''' + '}'
+        self.syntax_properties = '{' + f'''{', '.join([str(f'{key}: "{str(value)}"') for key, value in self.id.items()])}''' + '}'
 
     def __str__(self):
         return f'{self.relation} {self.syntax_properties}'
 
 
-class Node:
+class Node(CommonStructureDataNeo4j):
 
     def __init__(self, name: str = None, category: str = None, properties: Optional[Dict] = None):
-        self.name = name
+
+        self.default_properties = {'creation': f'{date.today()}', 'compteur': 0}
+        super().__init__(name=name,
+                         category=category,
+                         default_properties=self.default_properties,
+                         properties=properties)
+
         self.categories = [category.capitalize()]
 
-        self.id = {'name': name}
-
-        mandatory_settings = {'creation': f'{date.today()}', 'compteur': 0}
-        if properties is not None:
-            self.update_properties = properties
-            # remove the id key if inside the properties
-            for key, _ in self.id.items():
-                if key in list(self.update_properties.keys()):
-                    del self.update_properties[key]
-        else:
-            self.update_properties = mandatory_settings
-
-        # check if no missing element
-        for key, value in mandatory_settings.items():
-            # mandatory setting properties
-            if key not in list(self.update_properties.keys()):
-                self.update_properties.update({key: value})
-            # # value must be between ""
-            # if not re.match(r'^".*"$', self.update_properties[key]):
-            #     self.update_properties[key] = f"'{self.update_properties[key]}'"
-
-        self.update_properties['compteur'] = int(self.update_properties['compteur']) + 1
-        # self.update_properties['compteur'] = int(re.findall(r'\b\d+\b', self.update_properties['compteur'])[0])
-        # self.update_properties['compteur'] = str(self.update_properties['compteur'] + 1)
+        self.properties['compteur'] = int(self.properties['compteur']) + 1
 
         self.syntax_properties = '{' + f'''{', '.join([str(f"{key}: '{str(value)}'") for key, value in self.id.items()])}''' + '}'
 
@@ -80,7 +80,7 @@ class Node:
         # node creation
         instruction_1 = f'''MERGE ({self.name}:{self.categories[0]} {self.syntax_properties})'''
         # update the properties
-        instruction_2 = 'SET ' + f',\n'.join([f"{self.name}.{str(name_property)} = '{str(value)}'" for name_property, value in self.update_properties.items()])
+        instruction_2 = 'SET ' + f',\n'.join([f"{self.name}.{str(name_property)} = '{str(value)}'" for name_property, value in self.properties.items()])
 
         return f'{instruction_1}\n{instruction_2}'
 
@@ -95,7 +95,7 @@ class Concept(Node):
         super().__init__(name, category, properties_node)
         self.categories.append('Concept')
         self.nodes: List[Node] = []
-        self.connections: List[ConceptRelationNode] = [] # all the connections to this concept
+        self.relations: List[ConceptRelationNode] = [] # all the connections to this concept
 
     def get_code(self):
 
@@ -108,9 +108,9 @@ class Concept(Node):
         # update the properties
         instruction_2 = ['SET ' + ',\n'.join(
             [f"{self.name}.{str(name_property)} = '{str(value)}'" for name_property, value in
-             self.update_properties.items()])]
+             self.properties.items()])]
 
-        return [f'{code_this_node[0]}\n{instruction_2[0]}'] + [element.get_code() for element in self.nodes + self.connections]
+        return [f'{code_this_node[0]}\n{instruction_2[0]}'] + [element.get_code() for element in self.nodes + self.relations]
 
     def add_relation(self, target: Union[str|Node], relation: Relation):
 
@@ -125,7 +125,7 @@ class Concept(Node):
         if isinstance(target, str):
             target = Node(target, relation.category)
 
-        self.connections.append(ConceptRelationNode(self, relation, target))
+        self.relations.append(ConceptRelationNode(self, relation, target))
         self.nodes.append(target)
 
 
@@ -141,8 +141,8 @@ class ConceptRelationNode:
     def get_code(self):
         instruction1 = f'''MATCH{self.concept}, {self.noeud2}\nMERGE({self.concept.name})-[r:{self.relation}]->({self.noeud2.name})'''
         instruction2 = 'SET ' + ',\n'.join(
-            [f'r.{str(name_property)} = {str(value)}' for name_property, value in
-             self.relation.update_properties.items()])
+            [f"r.{str(name_property)} = '{str(value)}'" for name_property, value in
+             self.relation.properties.items()])
 
         return instruction1 + '\n' + instruction2
 
