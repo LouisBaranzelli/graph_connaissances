@@ -15,6 +15,7 @@ class CommonStructureDataNeo4j():
         self.id = {'name': name} # Dict of the ID Parameter
         self.properties = properties
         self.default_properties = default_properties
+        self.categories = [category.capitalize()]
 
     def get_properties(self):
         if self.properties is not None:
@@ -30,9 +31,6 @@ class CommonStructureDataNeo4j():
             # mandatory setting properties
             if key not in list(self.properties.keys()):
                 self.properties.update({key: value})
-            # # value must be between ""
-            # if not re.match(r'^".*"$', self.update_properties[key]):
-            #     self.update_properties[key] = f"'{self.update_properties[key]}'"
 
 
 class Relation(CommonStructureDataNeo4j):
@@ -50,7 +48,6 @@ class Relation(CommonStructureDataNeo4j):
                          default_properties=self.default_properties,
                          properties=properties)
 
-        self.category = category_target.capitalize()
         self.relation = "_".join(name.split()).upper()
 
         self.syntax_properties = '{' + f'''{', '.join([str(f'{key}: "{str(value)}"') for key, value in self.id.items()])}''' + '}'
@@ -68,8 +65,6 @@ class Node(CommonStructureDataNeo4j):
                          category=category,
                          default_properties=self.default_properties,
                          properties=properties)
-
-        self.categories = [category.capitalize()]
 
         self.properties['compteur'] = int(self.properties['compteur']) + 1
 
@@ -90,12 +85,12 @@ class Node(CommonStructureDataNeo4j):
 
 class Concept(Node):
 
-    def __init__(self, name: str = None, category: str = None, properties_node: Optional[Dict] = None):
+    def __init__(self, name: str = None, category: str = None, properties: Optional[Dict] = None):
 
-        super().__init__(name, category, properties_node)
+        super().__init__(name, category, properties)
         self.categories.append('Concept')
         self.nodes: List[Node] = []
-        self.relations: List[ConceptRelationNode] = [] # all the connections to this concept
+        self.relations: List[ConceptRelationNode] = []  # all the connections to this concept
 
     def get_code(self):
 
@@ -123,7 +118,7 @@ class Concept(Node):
         '''
 
         if isinstance(target, str):
-            target = Node(target, relation.category)
+            target = Node(target, relation.categories[0])
 
         self.relations.append(ConceptRelationNode(self, relation, target))
         self.nodes.append(target)
@@ -136,7 +131,7 @@ class ConceptRelationNode:
         self.relation = relation
 
         assert isinstance(concept, Concept), 'Noeud 1 nust be a concept.'
-        assert any([cat in [relation.category] + concept.categories for cat in noeud2.categories]), f'The target node must be {[relation.category]} or {concept.categories} category, get {noeud2.categories}.'
+        assert any([cat in relation.categories + concept.categories for cat in noeud2.categories]), f'The target node must be {relation.categories} or {concept.categories} category, get {noeud2.categories}.'
 
     def get_code(self):
         instruction1 = f'''MATCH{self.concept}, {self.noeud2}\nMERGE({self.concept.name})-[r:{self.relation}]->({self.noeud2.name})'''

@@ -1,5 +1,6 @@
+from typing import List
 from neo4j import GraphDatabase
-from data_structure import Relation, Concept, Node
+from data_structure import Relation, Concept, Node, ConceptRelationNode
 from loguru import logger
 
 from typing import Dict, Optional
@@ -35,31 +36,58 @@ class SaverNeo4j():
 
         with self.driver.session() as graphDB_Session:
 
-            instruction_node = "MATCH (concept: " + category + "{name: '" + node_name + "'}) RETURN properties(concept)"
+            instruction_node = "MATCH (c: " + category + "{name: '" + node_name + "'}) RETURN properties(c)"
             print(instruction_node)
             results = graphDB_Session.run(instruction_node).data()
             if len(results) == 0:
                 logger.warning(f"{category}:{node_name} does not exist")
                 return None
             else:
-                load_concept = Concept(name=node_name, category=category, properties_node=results[0]['properties(concept)'])
+                load_concept = Concept(name=node_name, category=category, properties=results[0]['properties(c)'])
 
-            instruction_relation = "MATCH (concept: " + category + "{name: '" + node_name + "'})-[r]->(m) RETURN labels(concept), properties(concept), r, properties(r) ,labels(m), properties(m)"
+            instruction_relation = "MATCH (c: " + category + "{name: '" + node_name + "'})-[r]->(t) RETURN labels(c), properties(c), r, properties(r) ,labels(t), properties(t)"
             results = graphDB_Session.run(instruction_relation).data()
             if len(results) == 0:
                 logger.warning(f"{category}:{node_name} does not have any relation")
                 return load_concept
 
             for result in results:
-                relation = Relation(name=result['properties(r)']['name'], category_target=result['labels(m)'][0],
+                relation = Relation(name=result['properties(r)']['name'], category_target=result['labels(t)'][0],
                                     properties=result['properties(r)'])
-                node_target = Node(name=result['properties(m)']['name'], category=result['labels(m)'][0],
-                                   properties=result['properties(m)'])
+                node_target = Node(name=result['properties(t)']['name'], category=result['labels(t)'][0],
+                                   properties=result['properties(t)'])
                 load_concept.add_relation(relation=relation, target=node_target)
 
             return load_concept
 
+    def get_all_relations(self) -> List[ConceptRelationNode]:
 
+        with self.driver.session() as graphDB_Session:
+            instruction = "MATCH (c)-[r]->(t) RETURN labels(c), properties(c), properties(r), labels(t), properties(t)"
+            results = graphDB_Session.run(instruction).data()
+            relations: [ConceptRelationNode] = []
+            for result in results:
+
+                concept = Concept(name=result['properties(c)']['name'], category=result['labels(c)'][0],
+                                  properties=result['properties(c)'])
+                relation = Relation(name=result['properties(r)']['name'], category_target=result['labels(t)'][0],
+                                    properties=result['properties(r)'])
+                node_target = Node(name=result['properties(t)']['name'], category=result['labels(t)'][0],
+                                   properties=result['properties(t)'])
+                relations.append(ConceptRelationNode(concept, relation, node_target))
+        return relations
+
+    def get_nodes(self, category: str) -> List[Node]:
+
+        with self.driver.session() as graphDB_Session:
+            instruction_node = "MATCH (c: " + category + ") RETURN properties(c), labels(c)"
+            results = graphDB_Session.run(instruction_node).data()
+            concepts: [Concept] = []
+            for result in results:
+                concepts.append(Concept(name=result['properties(c)']['name'], category=result['labels(c)'][0],
+                                  properties=result['properties(c)']))
+
+        return concepts
 
 
 saver = SaverNeo4j()
@@ -69,7 +97,11 @@ saver = SaverNeo4j()
 # famille.add_relation('Maman', relation_contient)
 # famille.add_relation('Papa', relation_contient)
 # saver.send(famille)
-a = saver.get_concept('Maman', 'Personne')
+# a = saver.get_concept('Baranzelli', 'Famille')
+# saver.send_concept(a)
+
+for r in saver.get_nodes(category="Personne"):
+    print(r)
 
 pass
 
