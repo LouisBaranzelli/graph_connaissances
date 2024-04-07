@@ -19,25 +19,34 @@ class SaverNeo4j():
         password = "Bankbook0"
         self.driver = GraphDatabase.driver(uri, auth=(username, password), database='quiz')
         assert self.driver.verify_connectivity() is None, f'Connection impossible a {uri}'
+        logger.success(f'Coonection to {uri} done')
 
     def send_concept(self, concept: Concept):
         with self.driver.session() as graphDB_Session:
             # Create nodes
             for instruction in concept.get_code():
-                print(instruction)
                 graphDB_Session.run(instruction)
+
+    def send_instruction(self, instruction: str):
+        print(instruction)
+        with self.driver.session() as graphDB_Session:
+            # Create nodes
+            graphDB_Session.run(instruction)
 
     def get_concept(self, node_name: str, category: str):
 
         '''
-        Returns the Concept that corresponds to the unique identifier provided as an argument: main node and relationship.
+        Returns the Concept ( main node and relationship) object type that corresponds to the unique identifier provided as an argument..
         Returns None if the concept is not found.
         '''
+
+        if node_name == '' or category == '':
+            logger.warning(f'Impossible to load concept: missing information name:{node_name} cat:{category}')
+            return
 
         with self.driver.session() as graphDB_Session:
 
             instruction_node = "MATCH (c: " + category + "{name: '" + node_name + "'}) RETURN properties(c)"
-            print(instruction_node)
             results = graphDB_Session.run(instruction_node).data()
             if len(results) == 0:
                 logger.warning(f"{category}:{node_name} does not exist")
@@ -77,10 +86,15 @@ class SaverNeo4j():
                 relations.append(ConceptRelationNode(concept, relation, node_target))
         return relations
 
-    def get_nodes(self, category: str) -> List[Node]:
+    def get_nodes(self, category:Optional[str]=None) -> List[Node]:
+
+        ''' Retourne tout les noeuds correspondant a une categorie'''
 
         with self.driver.session() as graphDB_Session:
-            instruction_node = "MATCH (c: " + category + ") RETURN properties(c), labels(c)"
+            if category is None:
+                instruction_node = "MATCH (c) RETURN properties(c), labels(c)"
+            else:
+                instruction_node = "MATCH (c: " + category + ") RETURN properties(c), labels(c)"
             results = graphDB_Session.run(instruction_node).data()
             concepts: [Concept] = []
             for result in results:
@@ -88,22 +102,22 @@ class SaverNeo4j():
                                   properties=result['properties(c)']))
 
         return concepts
-
-
+#
+#
 saver = SaverNeo4j()
-# famille = Concept('Baranzelli', 'famille', properties={'creation':'yooo'})
-# relation_contient = Relation('est compose de', 'personne')
-# famille.add_relation('Claire', relation_contient)
+famille = Concept('Baranzelli', 'famille', properties={'creation':'yooo'})
+relation_contient = Relation('Parle', 'Langue')
+famille.add_relation('Francais', relation_contient)
 # famille.add_relation('Maman', relation_contient)
 # famille.add_relation('Papa', relation_contient)
-# saver.send(famille)
+saver.send_concept(famille)
 # a = saver.get_concept('Baranzelli', 'Famille')
 # saver.send_concept(a)
 
-for r in saver.get_nodes(category="Personne"):
-    print(r)
+# for r in saver.get_nodes(category=None):
+#     print(r)
 
 pass
-
+#
 
 
