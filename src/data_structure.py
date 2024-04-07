@@ -2,6 +2,8 @@ from typing import Optional, Dict, Union, List
 from datetime import date
 import re
 
+# voir comment un noaud est cree et donc comment integrer mes modification pour supprimer une relation
+
 
 class CommonStructureDataNeo4j():
 
@@ -11,11 +13,12 @@ class CommonStructureDataNeo4j():
 
     def __init__(self, name: str, category: str, default_properties: Dict,  properties: Optional[Dict] = None):
 
-        self.name = name
-        self.id = {'name': name} # Dict of the ID Parameter
+        self.name = name.capitalize()
+        self.id = {'name': self.name} # Dict of the ID Parameter
         self.properties = properties
         self.default_properties = default_properties
         self.categories = [category.capitalize()]
+        self.get_properties() # update the properties
 
     def get_properties(self):
         if self.properties is not None:
@@ -70,7 +73,7 @@ class Node(CommonStructureDataNeo4j):
 
         self.syntax_properties = '{' + f'''{', '.join([str(f"{key}: '{str(value)}'") for key, value in self.id.items()])}''' + '}'
 
-    def get_code(self):
+    def get_code(self)-> str:
 
         # node creation
         instruction_1 = f'''MERGE ({self.name}:{self.categories[0]} {self.syntax_properties})'''
@@ -79,6 +82,9 @@ class Node(CommonStructureDataNeo4j):
 
         return f'{instruction_1}\n{instruction_2}'
 
+    def get_code_deletion(self) -> str:
+        instruction = f'''MATCH ({self.name}:{self.categories[0]} {self.syntax_properties})\nDETACH DELETE {self.name}'''
+        return instruction
     def __str__(self):
         return f'''({self.name}:{self.categories[0]} {self.syntax_properties})'''
 
@@ -123,6 +129,30 @@ class Concept(Node):
         self.relations.append(ConceptRelationNode(self, relation, target))
         self.nodes.append(target)
 
+    def get_code_del_relation(self, target: Node, relation: Relation) -> Optional[str]:
+
+        ''' Select the right realation considering the input if it exist and get the specific code to delete it '''
+
+        relation_to_delete: Optional[ConceptRelationNode] = None
+        for c_relation_n in self.relations:
+            # check if the target category and name and relation name match
+            if c_relation_n.noeud2.name == target.name and c_relation_n.noeud2.categories[0] == target.categories[0] and relation.name == c_relation_n.relation.name:
+                relation_to_delete = c_relation_n
+
+        if relation_to_delete is None:
+            return None
+        else:
+            relation_to_delete.get_code_delete_relation()
+
+
+        '''
+        Create a new relation. with an existing Node (of an appropriate catracteristique (Concept or category of the
+         relation)
+        :param target: name of the relation's target
+        :param relation: relation's name
+        :return: True if the deletion is a success else: False
+        '''
+
 
 class ConceptRelationNode:
     def __init__(self, concept: Concept, relation: Relation, noeud2: Node):
@@ -140,6 +170,12 @@ class ConceptRelationNode:
              self.relation.properties.items()])
 
         return instruction1 + '\n' + instruction2
+
+    def get_code_delete_relation(self):
+
+        instruction = f'''MATCH{self.concept}-[r:{self.relation}]->{self.noeud2}\n DELETE r'''
+        return instruction
+
 
     def __str__(self):
         return f'''({self.concept.name})-[:{self.relation}]->({self.noeud2.name})'''
