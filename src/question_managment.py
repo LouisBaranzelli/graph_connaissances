@@ -1,88 +1,182 @@
-import os
-from pathlib import Path
-import pandas as pd
-from datetime import datetime, date, timedelta
-from ui import AnswerQuestion, Question
+from abc import ABC, abstractmethod
+import random
+
+from typing import Dict
+from data_structure import Node, ConceptRelationNode, Concept, Relation
+from requetes_neo4j import SaverNeo4j
 
 
-class Dataset():
-    def __init__(self, path_dataset: Path):
+class QuestionType(ABC, SaverNeo4j):
+    @abstractmethod
+    def __init__(self, **kwargs):
+        SaverNeo4j.__init__(self)
+        ABC.__init__(self)
 
-        assert path_dataset.is_file(), f'{path_dataset} does not exist'
-        self.path_csv = path_dataset
-        self.pd_quiz = pd.read_csv(path_dataset, sep=';')
-        self.pd_quiz = AutoCheckDataset(self).dataset
-        self.available_state = [1, 3, 7, 21]
-        while(True):
-            if not self.get_question():
-                break
+    @abstractmethod
+    def get_elements(self) -> Dict:
+        pass
 
-    def get_question(self):
-        # available_question = self.pd_quiz.loc[]#
-        # les ligne dont nbr de jour / frequence de rapel > 0
-        available_questions = self.pd_quiz.loc[self.pd_quiz.days_before_last / self.pd_quiz.apply(lambda row: self.available_state[row.state], axis=1) >= 1]
-        available_questions = available_questions.loc[str(date.today()) != self.pd_quiz.date] # question must not has been asked today
-        if len(available_questions) == 0:
-            return False
+    @abstractmethod
+    def get_prompt(self) -> str:
+        pass
 
-        available_question = available_questions.sample(n=1)
-        object_question = Question(available_question.question.values[0], available_question.reponse.values[0])
 
-        answer = AnswerQuestion(object_question).run()
+class QuestionTypeConceptFromRelation(QuestionType):
+    '''
+    question to identify differents relations target toward a common node:
+    C1 -R0-> N1 <-R0- C2
+    wrong result:
+    C1 -R0-> N2 // C1 -R0-> N1
+    exemple :
 
-        self.pd_quiz.loc[available_question.index[0], 'date'] = str(date.today())
-        self.pd_quiz.loc[available_question.index[0], 'historique'] = f"{str(self.pd_quiz.loc[available_question.index[0], 'historique'])} {str(date.today())}/"
+    (1) Pierre eats poire (we test here mange between Pierre and poire)
+    (2) Anne eats poire
+    (3) Claire eats salade
 
-        state = self.pd_quiz.loc[available_question.index[0], 'state']
-        if answer:
-            if state < len(self.available_state):
-                self.pd_quiz.loc[available_question.index[0], 'state'] += 1
+    Question: Who eats poire
+    choice: Claire / Anne / Pierre
+    answer Pierre and Anne:
+
+
+    '''
+
+    def __init__(self, c_r_n: ConceptRelationNode,  nbr_true: int = 2, nbr_false: int = 2):
+
+        QuestionType.__init__(self)
+
+        print(c_r_n)
+        self.c_r_n = c_r_n
+        # get the matching results
+
+        instruction = "MATCH (n1)-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.noeud2.categories[0] + " {name: '" + c_r_n.noeud2.name + "'})\nRETURN n1"
+        print('True instruction', instruction)
+        results = self.send_instruction(instruction)
+
+
+        # generate the ConceptRelationNode list result
+        self.true_results = [ConceptRelationNode(c_r_n.concept, c_r_n.relation, Node(result['n1']['name'], c_r_n.noeud2.categories[0])) for result in results][:nbr_true]
+        if c_r_n not in self.true_results:
+            self.true_results[0] = c_r_n
+
+        # get the NO matching results
+        instruction = "MATCH (n1:" + c_r_n.concept.categories[0] + ")-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.noeud2.categories[0] + ")\nWHERE n2.name <> '"+ c_r_n.noeud2.name + "' AND n1.name <> '" + c_r_n.concept.name + "'\nRETURN n1"
+        print('False instruction', instruction)
+        results = self.send_instruction(instruction)
+        if len(results) == 0:
+            return None
         else:
-            if state > 0:
-                self.pd_quiz.loc[available_question.index[0], 'state'] -= 1
-
-        self.pd_quiz.to_csv(self.path_csv, sep=';', index=False)
-        return True
-
-
-class AutoCheckDataset():
-    def __init__(self, dataset: Dataset):
-        self.dataset = dataset.pd_quiz
-        self.check_header()
-        self.check_rows()
-
-    def check_header(self):
-        headers = ['date', 'historique', 'days_before_last']
-        for header in headers:
-            if header not in self.dataset.columns:
-                self.dataset[header] = ''
-
-    def check_rows(self):
-
-        # add a last date if new element
-        for index, row in self.dataset.iterrows():
-            if pd.isna(row.date):
-                self.dataset.iloc[index, self.dataset.columns.get_loc('date')] = str(date.today() - timedelta(days=1))
-            if pd.isna(row.historique):
-                self.dataset.iloc[index, self.dataset.columns.get_loc('historique')] = ''
-
-        for index, row in self.dataset.iterrows():
-            # update the number of days before the last reading of the data
-            list_date = row.date.split('-') if not pd.isna(row.date) else []
-            if len(list_date) == 3:
-                last_day = date(int(list_date[0]), int(list_date[1]), int(list_date[2]))
-                self.dataset.iloc[index, self.dataset.columns.get_loc('days_before_last')] = (date.today() - last_day).days
-            else: row.days_before_last = 1
+            # generate the ConceptRelationNode list result
+            self.false_results = [ConceptRelationNode(c_r_n.concept, c_r_n.relation,
+                                                Node(result['n1']['name'], c_r_n.noeud2.categories[0])) for result
+                            in results][:nbr_false]
 
 
-    def __str__(self):
-        return self.dataset
+    def get_elements(self) -> Dict:
+
+        '''
+        Return dict true answer * (nbr_true) if possible and alternative false answer * (nbr_false) if possible
+        :param nbr_true: nbr true answer returned
+        :param nbr_false:  nbr false answer returned
+        :return:
+        '''
+
+        return {'True': list(set([c_r_n.noeud2.name for c_r_n in self.true_results])), 'False': list(set([c_r_n.noeud2.name for c_r_n in self.false_results]))}
+
+    def get_prompt(self) -> str:
+
+        options = self.get_elements()['True'] + self.get_elements()['False']
+        random.shuffle(options)
+        return f'''
+        Parmi ces elements: {','.join(options)},
+        Action: {self.c_r_n.relation}
+        Target: {self.c_r_n.noeud2}
+        '''
 
 
+class QuestionTypeNodesRelation(QuestionType):
+    '''
+    question to identify differents relations target toward a common node:
+    C1 -R0-> N1
+    C1 -R0-> N2
+    C2 -R0-> N3
 
+    question on C1 and R0, good answer N1 and N2, wrong answer N3
+
+
+    exemple :
+
+    (1) Pierre eats poire (we test here mange between Pierre and poire)
+    (2) Pierre eats fraise
+    (3) Claire eats salade
+
+    Question: what eats Pierre
+    choice: poire, fraise, salade
+    answer poire and fraise
+
+
+    '''
+
+    def __init__(self, c_r_n: ConceptRelationNode,  nbr_true: int = 2, nbr_false: int = 2):
+
+        QuestionType.__init__(self)
+
+        print(c_r_n)
+        self.c_r_n = c_r_n
+        # get the matching results
+
+        instruction = "MATCH (n1:" + c_r_n.concept.categories[0] + " {name: '" + c_r_n.concept.name + "'})-[r:`" + c_r_n.relation.relation + "`]->(n2)\nRETURN n2"
+        print('True instruction', instruction)
+        results1 = self.send_instruction(instruction)
+
+        # generate the ConceptRelationNode list result
+        self.true_results = [ConceptRelationNode(c_r_n.concept, c_r_n.relation, Node(result['n2']['name'], c_r_n.noeud2.categories[0])) for result in results1][:nbr_true]
+        if c_r_n not in self.true_results:
+            self.true_results[0] = c_r_n
+
+        # get the NO matching results: all the concept category with this relation ship
+        instruction = "MATCH (n1)-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.relation.categories[0] + ")\nRETURN n2"
+        print('False instruction', instruction)
+        results2 = self.send_instruction(instruction)
+        results2 = [result2 for result2 in results2 if result2['n2']['name'] not in [result1['n2']['name'] for result1 in results1]]
+
+        if len(results2) == 0:
+            self.false_results = None
+        else:
+            # generate the ConceptRelationNode list result
+            self.false_results = [ConceptRelationNode(c_r_n.concept, c_r_n.relation,
+                                                Node(result['n2']['name'], c_r_n.noeud2.categories[0])) for result
+                            in results2][:nbr_false]
+
+        pass
+
+
+    def get_elements(self) -> Dict:
+
+        '''
+        Return dict true answer * (nbr_true) if possible and alternative false answer * (nbr_false) if possible
+        :param nbr_true: nbr true answer returned
+        :param nbr_false:  nbr false answer returned
+        :return:
+        '''
+
+        return {'True': list(set([c_r_n.noeud2.name for c_r_n in self.true_results])), 'False': list(set([c_r_n.noeud2.name for c_r_n in self.false_results]))}
+
+    def get_prompt(self) -> str:
+
+        options = self.get_elements()['True'] + self.get_elements()['False']
+        random.shuffle(options)
+        return f'''
+        Parmi ces elements: {','.join(options)},
+        Action: {self.c_r_n.relation}
+        Sujet: {self.c_r_n.concept}
+        '''
 
 
 
 
 if __name__ == '__main__':
-    Dataset(Path('../quiz.csv'))
+    saver = SaverNeo4j()
+    relations = saver.get_all_relations()
+    a = QuestionTypeNodesRelation(relations[0])
+    print(a.get_elements())
+    print(a.get_prompt())
