@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import List
 from neo4j import GraphDatabase
 from data_structure import Relation, Concept, Node, ConceptRelationNode
@@ -101,17 +102,41 @@ class ImportExportObjectNeo4j():
                 concepts.append(Concept(name=result['properties(c)']['name'], category=result['labels(c)'][0],
                                   properties=result['properties(c)']))
         return concepts
-#
-#
-saver = SaverNeo4j()
-famille = Concept('Baranzelli', 'famille', properties={'creation':'yooo'})
-relation_contient = Relation('Parle', 'Langue')
-famille.add_relation('Francais', relation_contient)
-# famille.add_relation('Maman', relation_contient)
-# famille.add_relation('Papa', relation_contient)
-saver.send_concept(famille)
-# a = saver.get_concept('Baranzelli', 'Famille')
-# saver.send_concept(a)
+
+
+class ModifyConcept():
+
+    def __init__(self, c_r_n: ConceptRelationNode, saver: Optional[SaverNeo4j] = saver):
+
+        self.saver = saver
+
+        # check if the concept exist
+        self.instruction_match = "MATCH (n1:" + c_r_n.concept.categories[0] + " {name: '" + c_r_n.concept.name + "'})-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.noeud2.categories[0] + " {name: '" + c_r_n.noeud2.name + "'})"
+        instruction = self.instruction_match + '\nRETURN n1, r, n2'
+        results = self.saver.send_instruction(instruction)
+        assert len(results) == 1
+        self.c_r_n = c_r_n
+
+        # level : nbr of day before to ask again
+        self.levels = {0:1, 1:3, 2:7, 3: 14, 4:150}
+
+    def increase_level(self):
+        # increase the level and set the new next date
+
+        # get the infotmation
+        instruction = self.instruction_match + '\nRETURN r.level'
+        result = self.saver.send_instruction(instruction)
+
+        # update the new level
+        level = min(int(result[0]['r.level']) + 1, max(list(self.levels.keys())))
+        # update the new date
+        new_next = (datetime.today() + timedelta(days=self.levels[level])).strftime("%Y-%m-%d")
+
+        # update new date and new level
+        instruction = self.instruction_match + f'\nSET r.level = {level}'
+        self.saver.send_instruction(instruction)
+        instruction = self.instruction_match + f"\nSET r.next = '{new_next}'"
+        self.saver.send_instruction(instruction)
 
     def decrease_level(self):
         # decrease the level and set the new next date

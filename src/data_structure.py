@@ -45,7 +45,7 @@ class Relation(CommonStructureDataNeo4j):
         :param category_target: type of the object resultant of the relation ship
         '''
 
-        self.default_properties = {'creation': f'{str(date.today())}'}
+        self.default_properties = {'creation': f'{str(date.today())}', 'level': 0, 'next': date.today()}
         super().__init__(name=name,
                          category=category_target,
                          default_properties=self.default_properties,
