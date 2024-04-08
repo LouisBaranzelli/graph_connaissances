@@ -5,31 +5,8 @@ from PyQt5.QtCore import QStringListModel, Qt
 from PyQt5.QtGui import QIcon
 import sys
 import re
-from requetes_neo4j import SaverNeo4j
+from requetes_neo4j import SaverNeo4j, ImportExportObjectNeo4j
 from data_structure import Node, ConceptRelationNode, Concept, Relation
-
-
-# update the the displayed of the category, see to delete all the relations when nothin in the entry, voir pour get code d'un concept est une liste
-
-# faire l'envoie des modification lors de la creation de relation
-#updater la liste de suggestion des relation
-
-class MetaNeo4j():
-    '''
-       Permet de definir toutes les variables en lien avec un concept:
-       La liste de toutes les relation existante
-    '''
-
-    def __init__(self, saver: SaverNeo4j):
-
-        self.saver = saver
-
-        # all possible relations
-        self.relation_names = set([n_relation_n.relation.name for n_relation_n in saver.get_all_relations()])
-
-        # all the concept (without trelations)
-        self.concepts = saver.get_nodes()
-
 
 
 class QListWidgetItemConcept(QListWidgetItem):
@@ -48,17 +25,18 @@ class QListWidgetItemRelation(QListWidgetItem):
         self.setText(f"{c_relation_n.noeud2.name} [{', '.join([category for category in c_relation_n.noeud2.categories])}]")
 
 
-class RelationWindow(QWidget):
+class RelationWindow(QWidget, ImportExportObjectNeo4j):
     '''
     interface to display 1 relation and all the node which share this relation
     '''
 
-    def __init__(self, main_concept: Concept, name_relation: str, category: str, meta: MetaNeo4j, *args, **kwargs):
+    def __init__(self, main_concept: Concept, name_relation: str, category: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        ImportExportObjectNeo4j.__init__(self)
+
         self.setGeometry(0, 0, 600, 50)
         self.name_relation = name_relation
         self.category = category
-        self.meta = meta
         self.main_concept = main_concept
 
         self.relation = Relation(self.name_relation, self.category)
@@ -90,7 +68,7 @@ class RelationWindow(QWidget):
 
         # all the availables choice for the auto completions - target Name of the relation
         # suggest the node with the right category (considering the relation)
-        self.target_names = [concept.name for concept in meta.concepts if concept.categories[0] == category]
+        self.target_names = [concept.name for concept in self.get_nodes() if concept.categories[0] == category]
         self.target_name_entries = QCompleter(self.target_names)
         self.target_name_entries.setFilterMode(Qt.MatchContains)
         self.target_name_entries.setCaseSensitivity(False)
@@ -114,7 +92,6 @@ class RelationWindow(QWidget):
         del_button.setIcon(icon_delete)
         self.layout.addWidget(del_button, 2, 2)
 
-        # self.show()
 
     def add(self):
         ''' Add a new target to the relation '''
@@ -124,10 +101,10 @@ class RelationWindow(QWidget):
 
         # create the new relation in neo4j
         new_concept = Node(name=self.lineedit_name.text(), category=self.lineedit_category.text())
-        self.meta.saver.send_instruction(new_concept.get_code())
+        self.saver.send_instruction(new_concept.get_code())
 
         new_relation = ConceptRelationNode(concept=self.main_concept, relation=self.relation, noeud2=new_concept)
-        self.meta.saver.send_instruction(new_relation.get_code())
+        self.saver.send_instruction(new_relation.get_code())
 
         # display in the list box
         new_item = QListWidgetItemRelation(new_relation)
@@ -142,7 +119,7 @@ class RelationWindow(QWidget):
             instruction_del = select_item.c_relation_n.get_code_delete_relation()
 
             if instruction_del is not None:
-                self.meta.saver.send_instruction(instruction_del)
+                self.saver.send_instruction(instruction_del)
 
         if selected_items:
             for item in selected_items:
@@ -192,24 +169,23 @@ class RelationWindows(QWidget):
 
     def __init__(self, name_concept: str, category_concept: str, *args, **kwargs):
 
+        ImportExportObjectNeo4j.__init__(self)
         super().__init__(*args, **kwargs)
         self.setGeometry(0, 0, 600, 400)
         self.relation_displays: Dict[str, RelationWindow] = {}
-        self.meta = MetaNeo4j(saver)
         self.layout = QGridLayout(self)
         self.index_position: int = 0
 
 
         # If concept exist load it
-        self.main_concept = saver.get_concept(node_name=name_concept, category=category_concept)
+        self.main_concept = self.get_concept(node_name=name_concept, category=category_concept)
         if self.main_concept is not None:
             for n_relation_m in self.main_concept.relations: # ConceptRelationNode
                 # Create the relation window if not yet existing
                 if n_relation_m.relation.name not in list(self.relation_displays.keys()):
                     self.relation_displays[n_relation_m.relation.name] = RelationWindow(main_concept=self.main_concept ,
                                                                                         name_relation=n_relation_m.relation.name,
-                                                                                   category=n_relation_m.noeud2.categories[0],
-                                                                                   meta=self.meta)
+                                                                                   category=n_relation_m.noeud2.categories[0])
                     self.layout.addWidget(self.relation_displays[n_relation_m.relation.name], self.index_position, 0)
                     self.index_position += 1
 
@@ -232,24 +208,23 @@ class RelationWindows(QWidget):
     def add_new_properties(self, name_relation: str, name_category):
         self.relation_displays[f'new_relation_{self.index_position}'] = RelationWindow(main_concept=self.main_concept,
                                                                                        name_relation= name_relation,
-                                                                                       category= name_category,
-                                                                                       meta=self.meta)
+                                                                                       category= name_category)
         self.layout.addWidget( self.relation_displays[f'new_relation_{self.index_position}'], self.index_position, 0)
         self.index_position += 1
 
 
-class MainWindow(QWidget):
+class MainWindow(QWidget, ImportExportObjectNeo4j):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        ImportExportObjectNeo4j.__init__(self)
+
         self.setGeometry(0, 0, 1000, 1000)
         self.layout = QGridLayout(self)
         self.setLayout(self.layout)
 
-
         # Load the datas
-        # saver = SaverNeo4j()
-        self.concepts = saver.get_nodes()
+        self.concepts = self.get_nodes()
 
         self.list_concept = QListWidget(self)
         # list_concept.setGeometry(50, 70, 150, 60)
@@ -298,7 +273,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(ref_button, 3, 0)
 
         # Create new relation with the suggestion
-        self.relation_names = set([relation.relation.name for relation in saver.get_all_relations()])
+        self.relation_names = set([relation.relation.name for relation in self.get_all_relations()])
         self.relation_name_entries = QCompleter(self.relation_names)
         self.relation_name_entries.setFilterMode(Qt.MatchContains)  # match not only the biginning of the world
         self.relation_name_entries.setCaseSensitivity(False)
@@ -346,12 +321,12 @@ class MainWindow(QWidget):
         if not re.search(r'[a-zA-Z]', name_new_concept) or not re.search(r'[a-zA-Z]', category_new_concept):
             return
 
-        concept = saver.get_concept(node_name=name_new_concept, category=category_new_concept)
+        concept = self.get_concept(node_name=name_new_concept, category=category_new_concept)
         # if concept doesnt exist create it
         if concept is None:
             concept = Concept(name=self.lineedit_name.text(), category=self.lineedit_category.text())
             instruction_creation = concept.get_code()[0]
-            saver.send_instruction(instruction_creation)
+            self.saver.send_instruction(instruction_creation)
             # display the new concept
             new_item = QListWidgetItemConcept(concept)
             self.list_concept.addItem(new_item)
@@ -368,7 +343,7 @@ class MainWindow(QWidget):
         ''' Display all the existing node in the list box (update the display not refreshed if adding new target node of
         a relation)'''
 
-        nodes = saver.get_nodes()
+        nodes = self.get_nodes()
         for node in nodes:
 
             new_item = QListWidgetItemConcept(node)
@@ -390,22 +365,16 @@ class MainWindow(QWidget):
         :return:
         '''
 
-        # concept = saver.get_concept(node_name=self.lineedit_name.text(), category=self.lineedit_category.text())
-
         selected_items = self.list_concept.selectedItems()  #
         # delete from Neo4J
         for select_item in selected_items:
             instruction_del = select_item.concept.get_code_deletion()
-            saver.send_instruction(instruction_del)
+            self.saver.send_instruction(instruction_del)
 
         # delete from the list displayed
         if selected_items:
             for item in selected_items:
                 self.list_concept.takeItem(self.list_concept.row(item))
-
-        # if concept is not None:
-        #     saver.send_instruction(concept.get_code_deletion())
-
 
     def create_relation(self):
         ''' To add a new empty relation ship'''
@@ -429,7 +398,7 @@ class MainWindow(QWidget):
 
         # check if the concept exist
         # self.layout.removeWidget(self.window_relationships)
-        concept = saver.get_concept(node_name=self.lineedit_name.text(), category=self.lineedit_category.text())
+        concept = self.get_concept(node_name=self.lineedit_name.text(), category=self.lineedit_category.text())
 
         if concept is not None:
             # self.layout.removeWidget(self.window_relationships)
@@ -458,7 +427,7 @@ class MainWindow(QWidget):
             self.lineedit_category.setText(category_suggestion[0])
 
         # if concept exist allow to add properties
-        concept = saver.get_concept(node_name=self.lineedit_name.text(), category=self.lineedit_category.text())
+        concept = self.get_concept(node_name=self.lineedit_name.text(), category=self.lineedit_category.text())
         if concept is None:
             self.create_button.setEnabled(False)
         else:

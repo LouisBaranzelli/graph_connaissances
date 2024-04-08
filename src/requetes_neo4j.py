@@ -2,12 +2,7 @@ from typing import List
 from neo4j import GraphDatabase
 from data_structure import Relation, Concept, Node, ConceptRelationNode
 from loguru import logger
-
 from typing import Dict, Optional
-
-# ici toute les requette pour ecrire dans la base de donne ou rechercher
-
-# Connexion à la base de données Neo4j
 
 
 class SaverNeo4j():
@@ -21,20 +16,26 @@ class SaverNeo4j():
         assert self.driver.verify_connectivity() is None, f'Connection impossible a {uri}'
         logger.success(f'Coonection to {uri} done')
 
-    def send_concept(self, concept: Concept):
-        with self.driver.session() as graphDB_Session:
-            # Create nodes
-            for instruction in concept.get_code():
-                graphDB_Session.run(instruction)
-
     def send_instruction(self, instruction: str):
-        print(instruction)
         with self.driver.session() as graphDB_Session:
             # Create nodes
-            graphDB_Session.run(instruction)
+            # graphDB_Session.run(instruction)
+            results = graphDB_Session.run(instruction).data()
+            return results
+
+
+saver = SaverNeo4j()
+
+
+class ImportExportObjectNeo4j():
+    '''
+    All the functions to import or export object from Neo4j server
+    '''
+
+    def __init__(self, saver: Optional[SaverNeo4j] = saver):
+        self.saver = saver
 
     def get_concept(self, node_name: str, category: str):
-
         '''
         Returns the Concept ( main node and relationship) object type that corresponds to the unique identifier provided as an argument..
         Returns None if the concept is not found.
@@ -44,7 +45,7 @@ class SaverNeo4j():
             logger.warning(f'Impossible to load concept: missing information name:{node_name} cat:{category}')
             return
 
-        with self.driver.session() as graphDB_Session:
+        with self.saver.driver.session() as graphDB_Session:
 
             instruction_node = "MATCH (c: " + category + "{name: '" + node_name + "'}) RETURN properties(c)"
             results = graphDB_Session.run(instruction_node).data()
@@ -71,7 +72,7 @@ class SaverNeo4j():
 
     def get_all_relations(self) -> List[ConceptRelationNode]:
 
-        with self.driver.session() as graphDB_Session:
+        with self.saver.driver.session() as graphDB_Session:
             instruction = "MATCH (c)-[r]->(t) RETURN labels(c), properties(c), properties(r), labels(t), properties(t)"
             results = graphDB_Session.run(instruction).data()
             relations: [ConceptRelationNode] = []
@@ -87,10 +88,9 @@ class SaverNeo4j():
         return relations
 
     def get_nodes(self, category:Optional[str]=None) -> List[Node]:
-
         ''' Retourne tout les noeuds correspondant a une categorie'''
 
-        with self.driver.session() as graphDB_Session:
+        with self.saver.driver.session() as graphDB_Session:
             if category is None:
                 instruction_node = "MATCH (c) RETURN properties(c), labels(c)"
             else:
@@ -100,7 +100,6 @@ class SaverNeo4j():
             for result in results:
                 concepts.append(Concept(name=result['properties(c)']['name'], category=result['labels(c)'][0],
                                   properties=result['properties(c)']))
-
         return concepts
 #
 #
@@ -114,10 +113,29 @@ saver.send_concept(famille)
 # a = saver.get_concept('Baranzelli', 'Famille')
 # saver.send_concept(a)
 
-# for r in saver.get_nodes(category=None):
-#     print(r)
+    def decrease_level(self):
+        # decrease the level and set the new next date
 
-pass
-#
+        # get the infotmation
+        instruction = self.instruction_match + '\nRETURN r.level'
+        result = self.saver.send_instruction(instruction)
+
+        # update the new level
+        level = max(int(result[0]['r.level']) - 1, 0)
+        # update the new date
+        new_next = (datetime.today() + timedelta(days=self.levels[level])).strftime("%Y-%m-%d")
+
+        # update new date and new level
+        instruction = self.instruction_match + f'\nSET r.level = {level}'
+        self.saver.send_instruction(instruction)
+        instruction = self.instruction_match + f"\nSET r.next = '{new_next}'"
+        self.saver.send_instruction(instruction)
 
 
+
+
+# aa = ImportExportObjectNeo4j()
+# a = aa.get_all_relations()[0]
+# #
+# b = ModifyConcept(a)
+# b.increase_level()
