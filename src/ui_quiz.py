@@ -15,13 +15,18 @@ class QPushButtonQuestion(QPushButton):
     def __init__(self, text: str, status: bool, **kwargs):
         QPushButton.__init__(self, text)
         self.status = status
+        self.value = text
+
+class MainWindowQuestion():
+    pass
 
 
 class Question(QWidget):
     ''' Main class to decline all the differente choices of answers '''
-    def __init__(self, enveloppe: EnveloppeQuestion, *args, **kwargs):
+    def __init__(self, enveloppe: EnveloppeQuestion, parent: MainWindowQuestion, *args, **kwargs):
         QWidget.__init__(self, *args, **kwargs)
 
+        self.parent = parent
         self.layout = QGridLayout(self)
         self.setLayout(self.layout)
         width_question = 50
@@ -41,37 +46,75 @@ class Question(QWidget):
         dict_shuffled = dict(tampon)
         index_line = 0
         index_col = 0
+
+        self.dict_answer: List[str: QPushButtonQuestion] = {}
+
+        self.answer_correct: Dict[QPushButtonQuestion, bool] = {} # check if the answer are answered (if inside) + wll answered or not
         for answer, verite in dict_shuffled.items():
             # Integrate truth information inside the button
-            verite = QPushButtonQuestion(text=answer, status=verite)
-            verite.setFixedHeight(width_question)
-            verite.clicked.connect(self.reveal_truth)
+            boutton = QPushButtonQuestion(text=answer, status=verite)
+            self.dict_answer[answer] = boutton
+            boutton.setFixedHeight(width_question)
+            boutton.clicked.connect(self.reveal_truth)
 
             if index_col > 1:
                 index_col = 0
                 index_line += 1
-            self.layout.addWidget(verite, index_col, index_line)  # 2eme ligne / 1ere colone
+            self.layout.addWidget(boutton, index_col, index_line)  # 2eme ligne / 1ere colone
             index_col += 1
 
     def reveal_truth(self):
         sender_button = self.sender()
         if sender_button.status is True:
             sender_button.setStyleSheet("background-color: green")
+            self.answer_correct[sender_button.value] = True
         else:
             sender_button.setStyleSheet("background-color: red")
+            self.answer_correct[sender_button.value] = False
+
+        # activate a the parent function when a choice is made
+        self.parent.question_answer_action()
+
+    def reveal_all(self):
+        ''' Show all the answers '''
+        for _, boutton in self.dict_answer.items():
+            if boutton.status is True:
+                boutton.setStyleSheet("background-color: green")
+
+            else:
+                boutton.setStyleSheet("background-color: red")
+
+
+
+    def all_is_true(self):
+        # Check All the true answers have been answered
+        if all([true_title in list(self.answer_correct.keys()) for true_title in [true_titles for true_titles, boutton in self.dict_answer.items() if boutton.status == True]]):
+            return True
+        return False
+
+    def any_false(self):
+        # Check All the true answers have been answered
+        if any([false_title in list(self.answer_correct.keys()) for false_title in [false_titles for false_titles, boutton in self.dict_answer.items() if boutton.status == False]]):
+            return True
+        return False
+
+
+
+    # check on all buttons if all the true are found
 
 
 class MainWindowQuestion(QWidget):
 
-    def __init__(self, question_widget: Question, *args, **kwargs):
+    def __init__(self, enveloppe_question: EnveloppeQuestion, *args, **kwargs):
         QWidget.__init__(self, *args, **kwargs)
-        self.question_widget = question_widget
+
+        self.question_widget = Question(enveloppe_question, self)
         self.setGeometry(0, 0, 1000, 1000)
         self.layout = QGridLayout(self)
         self.setLayout(self.layout)
 
         # Creation de la zone de la question
-        self._question = QLabel(question_widget.question)
+        self._question = QLabel(self.question_widget.question)
         self._question.setAlignment(Qt.AlignCenter)
         self._question.setFixedHeight(230)
         font = QFont()
@@ -90,12 +133,13 @@ class MainWindowQuestion(QWidget):
         self.layout.addWidget(space, 4, 2, 1, 4)
 
         # add the choices
-        self.layout.addWidget(question_widget,5, 2, 1, 4)
+        self.layout.addWidget(self.question_widget,5, 2, 1, 4)
 
 
         # create buttons
         self.button_next = QPushButton('Suivant')
         self.button_next.clicked.connect(self.suivant)
+        self.button_next.setEnabled(False)
         self.layout.addWidget(self.button_next, 7, 7)  # 2eme ligne / 1ere colone
 
         button_prec = QPushButton('Précédent')
@@ -104,11 +148,26 @@ class MainWindowQuestion(QWidget):
 
         self.show()
 
+    def check_answer(self):
+        print('ok')
+
+    def question_answer_action(self):
+        ''' function call when a answer is clicked'''
+        if self.question_widget.all_is_true():
+            self.button_next.setEnabled(True)
+
+        # if mistake show all the answers
+        if self.question_widget.any_false():
+            self.question_widget.reveal_all()
+            self.button_next.setEnabled(True)
+
     def switch_question(self, question: Question):
         self.question_widget.deleteLater()
         self.question_widget = question
         self.question = question.question # change l'intitule de la question
         self.layout.addWidget(question, 5, 2, 1, 4)
+        self.button_next.setEnabled(False)
+
 
     def precedent(self):
         pass
@@ -123,6 +182,30 @@ class MainWindowQuestion(QWidget):
     @question.setter
     def question(self, text: str):
         self._question.setText(text)
+
+
+class InteractionMainWindowQuestion(MainWindowQuestion):
+    ''' Implement the interaction of the buttons with the server side '''
+    def __init__(self):
+
+        api_url = "http://localhost:8000/"
+        self.url_question = api_url + 'question/'
+
+        # initialisation of the first question
+        feedback = requests.get(self.url_question).json()
+        enveloppe_question = EnveloppeQuestion(**feedback['question'])
+        MainWindowQuestion.__init__(self, enveloppe_question)
+        self.show()
+
+    def suivant(self):
+        '''
+        Ask a new question.
+        :return:
+        '''
+        feedback = requests.get(self.url_question).json()
+        enveloppe_question = EnveloppeQuestion(**feedback['question'])
+        question = Question(enveloppe_question, self)
+        self.switch_question(question)
 
 
 if __name__ == '__main__':
