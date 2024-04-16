@@ -17,23 +17,13 @@ class SaverNeo4j():
         assert self.driver.verify_connectivity() is None, f'Connection impossible a {uri}'
         logger.success(f'Coonection to {uri} done')
 
-    def send_instruction(self, instruction: str):
-        with self.driver.session() as graphDB_Session:
-            # Create nodes
-            # graphDB_Session.run(instruction)
-            results = graphDB_Session.run(instruction).data()
-            return results
-
-
-saver = SaverNeo4j()
-
 
 class ImportExportObjectNeo4j():
     '''
     All the functions to import or export object from Neo4j server
     '''
 
-    def __init__(self, saver: Optional[SaverNeo4j] = saver):
+    def __init__(self, saver: SaverNeo4j):
         self.saver = saver
 
     def get_concept(self, node_name: str, category: str):
@@ -103,17 +93,29 @@ class ImportExportObjectNeo4j():
                                   properties=result['properties(c)']))
         return concepts
 
+    def send_instruction(self, instruction: str):
+        with self.saver.driver.session() as graphDB_Session:
+            # Create nodes
+            # graphDB_Session.run(instruction)
+            results = graphDB_Session.run(instruction).data()
+            return results
 
-class ModifyConcept():
 
-    def __init__(self, c_r_n: ConceptRelationNode, saver: Optional[SaverNeo4j] = saver):
+class ModifyConcept(ImportExportObjectNeo4j):
 
-        self.saver = saver
+    '''
+    server - side
+    class qui embarque toute les fonction pour modifier des information sur le server neo4j
+    '''
+
+    def __init__(self, c_r_n: ConceptRelationNode, saver: SaverNeo4j = None):
+
+        ImportExportObjectNeo4j.__init__(self, saver)
 
         # check if the concept exist
         self.instruction_match = "MATCH (n1:" + c_r_n.concept.categories[0] + " {name: '" + c_r_n.concept.name + "'})-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.noeud2.categories[0] + " {name: '" + c_r_n.noeud2.name + "'})"
         instruction = self.instruction_match + '\nRETURN n1, r, n2'
-        results = self.saver.send_instruction(instruction)
+        results = self.send_instruction(instruction)
         assert len(results) == 1
         self.c_r_n = c_r_n
 
@@ -125,7 +127,7 @@ class ModifyConcept():
 
         # get the infotmation
         instruction = self.instruction_match + '\nRETURN r.level'
-        result = self.saver.send_instruction(instruction)
+        result = self.send_instruction(instruction)
 
         # update the new level
         level = min(int(result[0]['r.level']) + 1, max(list(self.levels.keys())))
@@ -134,16 +136,16 @@ class ModifyConcept():
 
         # update new date and new level
         instruction = self.instruction_match + f'\nSET r.level = {level}'
-        self.saver.send_instruction(instruction)
+        self.send_instruction(instruction)
         instruction = self.instruction_match + f"\nSET r.next = '{new_next}'"
-        self.saver.send_instruction(instruction)
+        self.send_instruction(instruction)
 
     def decrease_level(self):
         # decrease the level and set the new next date
 
         # get the infotmation
         instruction = self.instruction_match + '\nRETURN r.level'
-        result = self.saver.send_instruction(instruction)
+        result = self.send_instruction(instruction)
 
         # update the new level
         level = max(int(result[0]['r.level']) - 1, 0)
@@ -152,11 +154,9 @@ class ModifyConcept():
 
         # update new date and new level
         instruction = self.instruction_match + f'\nSET r.level = {level}'
-        self.saver.send_instruction(instruction)
+        self.send_instruction(instruction)
         instruction = self.instruction_match + f"\nSET r.next = '{new_next}'"
-        self.saver.send_instruction(instruction)
-
-
+        self.send_instruction(instruction)
 
 
 # aa = ImportExportObjectNeo4j()

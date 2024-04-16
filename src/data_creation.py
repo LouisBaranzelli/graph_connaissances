@@ -25,14 +25,15 @@ class QListWidgetItemRelation(QListWidgetItem):
         self.setText(f"{c_relation_n.noeud2.name} [{', '.join([category for category in c_relation_n.noeud2.categories])}]")
 
 
-class RelationWindow(QWidget, ImportExportObjectNeo4j):
+class RelationWindow(ImportExportObjectNeo4j, QWidget):
     '''
     interface to display 1 relation and all the node which share this relation
     '''
 
-    def __init__(self, main_concept: Concept, name_relation: str, category: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        ImportExportObjectNeo4j.__init__(self)
+    def __init__(self, main_concept: Concept, name_relation: str, category: str, saver: SaverNeo4j, *args, **kwargs):
+
+        super().__init__(saver)
+        QWidget.__init__(self)
 
         self.setGeometry(0, 0, 600, 50)
         self.name_relation = name_relation
@@ -101,10 +102,10 @@ class RelationWindow(QWidget, ImportExportObjectNeo4j):
 
         # create the new relation in neo4j
         new_concept = Node(name=self.lineedit_name.text(), category=self.lineedit_category.text())
-        self.saver.send_instruction(new_concept.get_code())
+        self.send_instruction(new_concept.get_code())
 
         new_relation = ConceptRelationNode(concept=self.main_concept, relation=self.relation, noeud2=new_concept)
-        self.saver.send_instruction(new_relation.get_code())
+        self.send_instruction(new_relation.get_code())
 
         # display in the list box
         new_item = QListWidgetItemRelation(new_relation)
@@ -119,7 +120,7 @@ class RelationWindow(QWidget, ImportExportObjectNeo4j):
             instruction_del = select_item.c_relation_n.get_code_delete_relation()
 
             if instruction_del is not None:
-                self.saver.send_instruction(instruction_del)
+                self.send_instruction(instruction_del)
 
         if selected_items:
             for item in selected_items:
@@ -142,35 +143,16 @@ class RelationWindow(QWidget, ImportExportObjectNeo4j):
         self.name_relation
 
 
-# class EditableRelationWindow(RelationWindow):
-#     '''
-#     RelationWindow with editable name and category
-#     '''
-#     def __init__(self, **kwargs):
-#         super().__init__(name_relation='', category='', **kwargs)
-#         self.lineedit_name_relation.setEnabled(True)
-#         self.lineedit_category.setEnabled(True)
-#
-#         self.lineedit_category.textEdited.connect(self.change_category)
-#         self.lineedit_name_relation.textEdited.connect(self.change_name_relation)
-#
-#     def change_category(self):
-#         self.category = self.lineedit_category.text()
-#
-#     def change_name_relation(self):
-#         self.name_relation = self.lineedit_name_relation.text()
-
-
-class RelationWindows(QWidget):
+class RelationWindows(ImportExportObjectNeo4j, QWidget):
 
     '''
     from a name and category: load all the relation and connected nodes
     '''
 
-    def __init__(self, name_concept: str, category_concept: str, *args, **kwargs):
+    def __init__(self, name_concept: str, category_concept: str, saver: SaverNeo4j, *args, **kwargs):
+        super().__init__(saver)
+        QWidget.__init__(self)
 
-        ImportExportObjectNeo4j.__init__(self)
-        super().__init__(*args, **kwargs)
         self.setGeometry(0, 0, 600, 400)
         self.relation_displays: Dict[str, RelationWindow] = {}
         self.layout = QGridLayout(self)
@@ -185,7 +167,8 @@ class RelationWindows(QWidget):
                 if n_relation_m.relation.name not in list(self.relation_displays.keys()):
                     self.relation_displays[n_relation_m.relation.name] = RelationWindow(main_concept=self.main_concept ,
                                                                                         name_relation=n_relation_m.relation.name,
-                                                                                   category=n_relation_m.noeud2.categories[0])
+                                                                                        saver=saver,
+                                                                                        category=n_relation_m.noeud2.categories[0])
                     self.layout.addWidget(self.relation_displays[n_relation_m.relation.name], self.index_position, 0)
                     self.index_position += 1
 
@@ -213,11 +196,12 @@ class RelationWindows(QWidget):
         self.index_position += 1
 
 
-class MainWindow(QWidget, ImportExportObjectNeo4j):
+class MainWindow(ImportExportObjectNeo4j, QWidget):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        ImportExportObjectNeo4j.__init__(self)
+    def __init__(self, saver: SaverNeo4j):
+
+        super().__init__(saver)
+        QWidget.__init__(self)
 
         self.setGeometry(0, 0, 1000, 1000)
         self.layout = QGridLayout(self)
@@ -302,12 +286,9 @@ class MainWindow(QWidget, ImportExportObjectNeo4j):
         self.list_concept.itemClicked.connect(self.handle_item_clicked)
 
         # # add the relations managments variable (updated when the fillin text name or category is modified)
-        self.window_relationships = RelationWindows(name_concept=self.lineedit_name.text(),
+        self.window_relationships = RelationWindows(saver=saver,
+                                                    name_concept=self.lineedit_name.text(),
                                                     category_concept=self.lineedit_category.text())
-
-        # self_properties_interface = RelationWindows(name_concept='Baranzelli', category_concept='Famille')
-        # self.layout.addWidget(del_button, 1, 0)  # 2eme ligne / 1ere colone
-
 
         # ajouter toutes les proprite en creant ou pas un objet si il n'existe pas
         self.show()
@@ -326,7 +307,7 @@ class MainWindow(QWidget, ImportExportObjectNeo4j):
         if concept is None:
             concept = Concept(name=self.lineedit_name.text(), category=self.lineedit_category.text())
             instruction_creation = concept.get_code()[0]
-            self.saver.send_instruction(instruction_creation)
+            self.send_instruction(instruction_creation)
             # display the new concept
             new_item = QListWidgetItemConcept(concept)
             self.list_concept.addItem(new_item)
@@ -369,7 +350,7 @@ class MainWindow(QWidget, ImportExportObjectNeo4j):
         # delete from Neo4J
         for select_item in selected_items:
             instruction_del = select_item.concept.get_code_deletion()
-            self.saver.send_instruction(instruction_del)
+            self.send_instruction(instruction_del)
 
         # delete from the list displayed
         if selected_items:
@@ -402,7 +383,8 @@ class MainWindow(QWidget, ImportExportObjectNeo4j):
 
         if concept is not None:
             # self.layout.removeWidget(self.window_relationships)
-            self.window_relationships = RelationWindows(name_concept=self.lineedit_name.text(),
+            self.window_relationships = RelationWindows(saver=saver,
+                                                        name_concept=self.lineedit_name.text(),
                                                         category_concept=self.lineedit_category.text())
             self.layout.addWidget(self.window_relationships, 1, 1, 2, 5)
 
@@ -473,10 +455,12 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     saver = SaverNeo4j()
-    window = MainWindow()
+    window = MainWindow(saver=saver)
     # window = RelationWindows(name_concept='Baranzelli', category_concept='Famille')
     sys.exit(app.exec())
     window.show()
+
+
 
 
 

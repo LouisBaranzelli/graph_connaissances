@@ -6,13 +6,11 @@ from data_structure import Node, ConceptRelationNode, Concept, Relation
 from requetes_neo4j import SaverNeo4j
 
 
-class QuestionType(ABC, SaverNeo4j):
-    @abstractmethod
-    def __init__(self, **kwargs):
-        SaverNeo4j.__init__(self)
-        ABC.__init__(self)
+    def __init__(self, saver: SaverNeo4j, **kwargs):
 
-    @abstractmethod
+        ImportExportObjectNeo4j.__init__(self, saver=saver)
+        self.false_results: [ConceptRelationNode] = []
+
     def get_elements(self) -> Dict:
         pass
 
@@ -42,7 +40,7 @@ class QuestionTypeConceptFromRelation(QuestionType):
 
     def __init__(self, c_r_n: ConceptRelationNode,  nbr_true: int = 2, nbr_false: int = 2):
 
-        QuestionType.__init__(self)
+        QuestionType.__init__(self, saver=saver)
 
         print(c_r_n)
         self.c_r_n = c_r_n
@@ -116,9 +114,9 @@ class QuestionTypeNodesRelation(QuestionType):
 
     '''
 
-    def __init__(self, c_r_n: ConceptRelationNode,  nbr_true: int = 2, nbr_false: int = 2):
+    def __init__(self, c_r_n: ConceptRelationNode,  nbr_true: int = 2, nbr_false: int = 2, saver: SaverNeo4j = None):
 
-        QuestionType.__init__(self)
+        QuestionType.__init__(self, saver=saver)
 
         print(c_r_n)
         self.c_r_n = c_r_n
@@ -176,7 +174,7 @@ class QuestionTypeNodesRelation(QuestionType):
 
 if __name__ == '__main__':
     saver = SaverNeo4j()
-    relations = saver.get_all_relations()
-    a = QuestionTypeNodesRelation(relations[0])
-    print(a.get_elements())
-    print(a.get_prompt())
+    a = QuestionManagment(saver=saver)
+    answer, question = a.create_enveloppe()
+
+
