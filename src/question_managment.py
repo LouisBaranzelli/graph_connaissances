@@ -234,6 +234,7 @@ class QuestionManagment(ImportExportObjectNeo4j):
             logger.info('All knowledges up to date !')
         random.shuffle(c_r_ns)
         self.c_r_n = c_r_ns[0]
+        self.saver = saver
         questions = [QuestionTypeOnConcept(self.c_r_n, saver=saver), QuestionTypeOnNode(self.c_r_n, saver=saver), SimpleQuestionOnConcept(c_r_n=self.c_r_n, saver=saver), SimpleQuestionOnConcept(c_r_n=self.c_r_n, saver=saver)]
         questions = [question for question in questions if question.is_valid()] # keep question with at leat 1 wrong choice
         random.shuffle(questions)
@@ -243,19 +244,17 @@ class QuestionManagment(ImportExportObjectNeo4j):
         self.answers.update(self.question.false_results)
 
 
-    def create_enveloppe(self) -> Tuple[EnveloppeAnswer, EnveloppeQuestion]:
+    def create_enveloppe(self) -> Tuple[EnveloppeQuestion]:
         question = EnveloppeQuestion(question=self.question.get_prompt(),
                                      answers=list(self.question.true_results.keys()),
                                      false_answers=list(self.question.false_results.keys()))
-
-        answer_user = EnveloppeAnswer(question)
-
-        return answer_user, question
+        return question
 
     def submit_answer(self, answers: EnveloppeAnswer):
+        '''Get the relation threw the name of the answer and update the level accordingly to the dictionary'''
         for key_answer, value in answers.dict_answer.items():
-            c_r_n = ModifyConcept(self.answers[key_answer])
-            if value == 1:
+            c_r_n = ModifyConcept(self.answers[key_answer], saver=self.saver)
+            if value == True:
                 c_r_n.increase_level()
             else:
                 c_r_n.decrease_level()
@@ -277,7 +276,12 @@ class QuestionManagment(ImportExportObjectNeo4j):
 
 if __name__ == '__main__':
     saver = SaverNeo4j()
-    a = QuestionManagment(saver=saver)
-    answer, question = a.create_enveloppe()
+    question_managment = QuestionManagment(saver=saver)
+    question_enveloppe = question_managment.create_enveloppe()
+    answers = {answer: True for answer in question_enveloppe.answers}
+    envelop_answer = EnveloppeAnswer(answers)
+    question_managment.submit_answer(envelop_answer)
+
+
 
 

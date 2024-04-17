@@ -108,7 +108,7 @@ class ModifyConcept(ImportExportObjectNeo4j):
     class qui embarque toute les fonction pour modifier des information sur le server neo4j
     '''
 
-    def __init__(self, c_r_n: ConceptRelationNode, saver: SaverNeo4j = None):
+    def __init__(self, c_r_n: ConceptRelationNode, saver: SaverNeo4j):
 
         ImportExportObjectNeo4j.__init__(self, saver)
 
@@ -130,7 +130,9 @@ class ModifyConcept(ImportExportObjectNeo4j):
         result = self.send_instruction(instruction)
 
         # update the new level
-        level = min(int(result[0]['r.level']) + 1, max(list(self.levels.keys())))
+        level = int(result[0]['r.level']) + 1
+        level = max(level, 0)  # no negatif
+        level = min(level, max(list(self.levels.keys())))
         # update the new date
         new_next = (datetime.today() + timedelta(days=self.levels[level])).strftime("%Y-%m-%d")
 
@@ -148,7 +150,9 @@ class ModifyConcept(ImportExportObjectNeo4j):
         result = self.send_instruction(instruction)
 
         # update the new level
-        level = max(int(result[0]['r.level']) - 1, 0)
+        level = int(result[0]['r.level']) - 1
+        level = min(level, max(list(self.levels.keys()))) # no > max level
+        level = max(level, 0) # no negatif
         # update the new date
         new_next = (datetime.today() + timedelta(days=self.levels[level])).strftime("%Y-%m-%d")
 

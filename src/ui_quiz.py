@@ -31,7 +31,7 @@ class Question(QWidget):
         self.setLayout(self.layout)
         width_question = 50
         self.setGeometry(0, 0, 800, width_question * len(enveloppe.answers+enveloppe.false_answers)//2 + 1)
-
+        self.answers = enveloppe.answers
         self.question = enveloppe.question
         # Create dict of answer true and false
         answers = {}
@@ -99,15 +99,11 @@ class Question(QWidget):
         return False
 
 
-
-    # check on all buttons if all the true are found
-
-
 class MainWindowQuestion(QWidget):
 
     def __init__(self, enveloppe_question: EnveloppeQuestion, *args, **kwargs):
-        QWidget.__init__(self, *args, **kwargs)
 
+        QWidget.__init__(self, *args, **kwargs)
         self.question_widget = Question(enveloppe_question, self)
         self.setGeometry(0, 0, 1000, 1000)
         self.layout = QGridLayout(self)
@@ -149,17 +145,19 @@ class MainWindowQuestion(QWidget):
         self.show()
 
     def check_answer(self):
-        print('ok')
+        pass
 
     def question_answer_action(self):
         ''' function call when a answer is clicked'''
         if self.question_widget.all_is_true():
             self.button_next.setEnabled(True)
+            self.check_answer() # update in Neo4j
 
         # if mistake show all the answers
         if self.question_widget.any_false():
             self.question_widget.reveal_all()
             self.button_next.setEnabled(True)
+            self.check_answer() # update in Neo4j
 
     def switch_question(self, question: Question):
         self.question_widget.deleteLater()
@@ -190,6 +188,7 @@ class InteractionMainWindowQuestion(MainWindowQuestion):
 
         api_url = "http://localhost:8000/"
         self.url_question = api_url + 'question/'
+        self.url_answer = api_url + 'answer/'
 
         # initialisation of the first question
         feedback = requests.get(self.url_question).json()
@@ -206,6 +205,15 @@ class InteractionMainWindowQuestion(MainWindowQuestion):
         enveloppe_question = EnveloppeQuestion(**feedback['question'])
         question = Question(enveloppe_question, self)
         self.switch_question(question)
+
+    def check_answer(self):
+        ''' if one mistake all true elements are considerated as a mistake'''
+        if self.question_widget.all_is_true():
+            answers = {element: True for element in self.question_widget.answers}
+
+        if self.question_widget.any_false():
+            answers = {element: False for element in self.question_widget.answers}
+        requests.post(self.url_answer, json=answers)
 
 
 if __name__ == '__main__':

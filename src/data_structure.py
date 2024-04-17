@@ -1,8 +1,5 @@
 from typing import Optional, Dict, Union, List
 from datetime import date
-import re
-
-# voir comment un noaud est cree et donc comment integrer mes modification pour supprimer une relation
 
 
 class EnveloppeQuestion():
@@ -11,7 +8,7 @@ class EnveloppeQuestion():
     '''
     def __init__(self, question: str, answers: List[str], false_answers: List[str]):
         self.question: Optional[str] = question
-        self.answers: Optional[List[str]] = answers
+        self.answers: Optional[List[str]] = answers # True answers
         self.false_answers: Optional[List[str]] = false_answers # eventuellement a modifier pour indiquer pourquoi ce n'est pas la bonne reponse
 
 
@@ -20,8 +17,8 @@ class EnveloppeAnswer():
     Class qui embarque juste les elements pour soumettre la reponse: dictionnaire avec les clefs des suggestion
     qui prennent en valeur True or False si le user a bien repondu
     '''
-    def __init__(self, question: EnveloppeQuestion):
-        self.dict_answer = {element: False for element in question.answers + question.false_answers}
+    def __init__(self, answers: Dict[str, bool]):
+        self.dict_answer = answers
 
 
 class CommonStructureDataNeo4j():
