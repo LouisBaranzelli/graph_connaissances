@@ -100,6 +100,20 @@ class ImportExportObjectNeo4j():
             results = graphDB_Session.run(instruction).data()
             return results
 
+    def get_node_connected(self, concept: Node) -> List[Node]:
+        output: List[Node] = []
+        with self.saver.driver.session() as graphDB_Session:
+            instruction_relation = "MATCH (c: " + concept.categories[0] + "{name: '" + concept.name + "'})-[r]->(t) RETURN labels(t), properties(t)"
+            results = graphDB_Session.run(instruction_relation).data()
+
+            for result in results:
+
+                node_target = Node(name=result['properties(t)']['name'], category=result['labels(t)'][0],
+                                   properties=result['properties(t)'])
+                output.append(node_target)
+        return output
+
+
 
 class ModifyConcept(ImportExportObjectNeo4j):
 

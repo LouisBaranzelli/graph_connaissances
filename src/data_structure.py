@@ -2,6 +2,14 @@ from typing import Optional, Dict, Union, List
 from datetime import date
 
 
+class InformationAPI():
+
+    def __init__(self):
+        api_url = "http://localhost:8000/"
+        self.url_question = api_url + 'question/'
+        self.url_answer = api_url + 'answer/'
+        self.url_node_n_n_1 = api_url + 'get_node_n-1_and_n-2/'
+
 class EnveloppeQuestion():
     '''
     Class qui enbarque juste les elements de textes: question et reponses (vrais et fausse) a envoyer a l'affichage
@@ -195,6 +203,7 @@ class ConceptRelationNode:
 
     def __str__(self):
         return f'''({self.concept.name})-[:{self.relation}]->({self.noeud2.name})'''
+
 
 
 

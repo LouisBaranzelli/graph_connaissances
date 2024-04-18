@@ -7,7 +7,7 @@ import sys
 import re
 from requetes_neo4j import SaverNeo4j, ImportExportObjectNeo4j
 from data_structure import Node, ConceptRelationNode, Concept, Relation
-
+from graph_representation import PlotWidget
 
 class QListWidgetItemConcept(QListWidgetItem):
 
@@ -149,19 +149,26 @@ class RelationWindows(ImportExportObjectNeo4j, QWidget):
     from a name and category: load all the relation and connected nodes
     '''
 
-    def __init__(self, name_concept: str, category_concept: str, saver: SaverNeo4j, *args, **kwargs):
+    def __init__(self, name_concept: str, category_concept: str, saver: SaverNeo4j):
         super().__init__(saver)
         QWidget.__init__(self)
 
         self.setGeometry(0, 0, 600, 400)
         self.relation_displays: Dict[str, RelationWindow] = {}
         self.layout = QGridLayout(self)
-        self.index_position: int = 0
 
 
+        self.index_position: int = 1
         # If concept exist load it
         self.main_concept = self.get_concept(node_name=name_concept, category=category_concept)
+        # Load all the relation to the concept (or add the node to the existing displayed relation)
         if self.main_concept is not None:
+
+            # display the graph
+            graph = PlotWidget(self.main_concept)
+            self.layout.addWidget(graph, 0, 0)
+
+            # display relations
             for n_relation_m in self.main_concept.relations: # ConceptRelationNode
                 # Create the relation window if not yet existing
                 if n_relation_m.relation.name not in list(self.relation_displays.keys()):
@@ -189,7 +196,8 @@ class RelationWindows(ImportExportObjectNeo4j, QWidget):
         self.setLayout(main_layout)
 
     def add_new_properties(self, name_relation: str, name_category):
-        self.relation_displays[f'new_relation_{self.index_position}'] = RelationWindow(main_concept=self.main_concept,
+        self.relation_displays[f'new_relation_{self.index_position}'] = RelationWindow(saver=saver,
+                                                                                       main_concept=self.main_concept,
                                                                                        name_relation= name_relation,
                                                                                        category= name_category)
         self.layout.addWidget( self.relation_displays[f'new_relation_{self.index_position}'], self.index_position, 0)
@@ -386,7 +394,7 @@ class MainWindow(ImportExportObjectNeo4j, QWidget):
             self.window_relationships = RelationWindows(saver=saver,
                                                         name_concept=self.lineedit_name.text(),
                                                         category_concept=self.lineedit_category.text())
-            self.layout.addWidget(self.window_relationships, 1, 1, 2, 5)
+            self.layout.addWidget(self.window_relationships, 1, 1, 2, 6)
 
 
     def select_concept_name(self, text):

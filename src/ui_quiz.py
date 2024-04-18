@@ -7,7 +7,7 @@ from typing import Dict, Optional, List
 from PyQt5.QtWidgets import  QVBoxLayout, QListWidget,QScrollArea, QCompleter, QPushButton, QListWidgetItem,  QLabel, QLineEdit, QGridLayout, QWidget, QApplication
 from PyQt5.QtCore import QStringListModel, Qt
 from PyQt5.QtGui import QIcon, QColor, QFont
-from data_structure import EnveloppeQuestion
+from data_structure import EnveloppeQuestion, InformationAPI
 
 
 class QPushButtonQuestion(QPushButton):
@@ -19,7 +19,6 @@ class QPushButtonQuestion(QPushButton):
 
 class MainWindowQuestion():
     pass
-
 
 class Question(QWidget):
     ''' Main class to decline all the differente choices of answers '''
@@ -182,14 +181,12 @@ class MainWindowQuestion(QWidget):
         self._question.setText(text)
 
 
-class InteractionMainWindowQuestion(MainWindowQuestion):
+
+
+class InteractionMainWindowQuestion(MainWindowQuestion, InformationAPI):
     ''' Implement the interaction of the buttons with the server side '''
     def __init__(self):
-
-        api_url = "http://localhost:8000/"
-        self.url_question = api_url + 'question/'
-        self.url_answer = api_url + 'answer/'
-
+        InformationAPI.__init__(self)
         # initialisation of the first question
         feedback = requests.get(self.url_question).json()
         enveloppe_question = EnveloppeQuestion(**feedback['question'])
