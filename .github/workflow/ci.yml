@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  run-tests:
+    strategy:
+      fail-fast: false
+    matrix:
+      os: [ubuntu-latest]
+      python-version:
+        - "3.8"
+
+  name: Test
+  runs-on : ${{ matrix.os }}
+
+  steps:
+    - name: Checkout code
+      uses: actions/ckeckout@v3
+
+    - name: set up python
+      uses: : actions/setup-python@v4
+        with:
+          python-version: $ {{ matrix.python-version }}
+
+    - name Install dependancies
+    - run: python -m pip install pytest .
+
+    - name: Run test
+      run: pytest
