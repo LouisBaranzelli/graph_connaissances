@@ -100,17 +100,18 @@ class Node(CommonStructureDataNeo4j):
     def get_code(self)-> str:
 
         # node creation
-        instruction_1 = f'''MERGE ({self.name}:{self.categories[0]} {self.syntax_properties})'''
+        instruction_1 = f'''MERGE (`{self.name}`:`{self.categories[0]}` {self.syntax_properties})'''
         # update the properties
-        instruction_2 = 'SET ' + f',\n'.join([f"{self.name}.{str(name_property)} = '{str(value)}'" for name_property, value in self.properties.items()])
+        instruction_2 = 'SET ' + f',\n'.join([f"`{self.name}`.{str(name_property)} = '{str(value)}'" for name_property, value in self.properties.items()])
 
         return f'{instruction_1}\n{instruction_2}'
 
     def get_code_deletion(self) -> str:
-        instruction = f'''MATCH ({self.name}:{self.categories[0]} {self.syntax_properties})\nDETACH DELETE {self.name}'''
+        instruction = f'''MATCH (`{self.name}`:`{self.categories[0]}` {self.syntax_properties})\nDETACH DELETE `{self.name}`'''
         return instruction
+
     def __str__(self):
-        return f'''({self.name}:{self.categories[0]} {self.syntax_properties})'''
+        return f'''(`{self.name}`:`{self.categories[0]}` {self.syntax_properties})'''
 
 
 class Concept(Node):
@@ -128,11 +129,11 @@ class Concept(Node):
         get list of instruction to create the Concept in cypher
         '''
 
-        code_this_node = [f'''MERGE ({self.name}:{self.categories[0]} {self.syntax_properties})''']
+        code_this_node = [f'''MERGE (`{self.name}`:`{self.categories[0]}` {self.syntax_properties})''']
 
         # update the properties
         instruction_2 = ['SET ' + ',\n'.join(
-            [f"{self.name}.{str(name_property)} = '{str(value)}'" for name_property, value in
+            [f"`{self.name}`.{str(name_property)} = '{str(value)}'" for name_property, value in
              self.properties.items()])]
 
         return [f'{code_this_node[0]}\n{instruction_2[0]}'] + [element.get_code() for element in self.nodes + self.relations]
@@ -188,7 +189,7 @@ class ConceptRelationNode:
         assert any([cat in relation.categories + concept.categories for cat in noeud2.categories]), f'The target node must be {relation.categories} or {concept.categories} category, get {noeud2.categories}.'
 
     def get_code(self):
-        instruction1 = f'''MATCH{self.concept}, {self.noeud2}\nMERGE({self.concept.name})-[r:{self.relation}]->({self.noeud2.name})'''
+        instruction1 = f'''MATCH {self.concept}, {self.noeud2}\nMERGE(`{self.concept.name}`)-[r:{self.relation}]->(`{self.noeud2.name}`)'''
         instruction2 = 'SET ' + ',\n'.join(
             [f"r.{str(name_property)} = '{str(value)}'" for name_property, value in
              self.relation.properties.items()])
@@ -197,7 +198,7 @@ class ConceptRelationNode:
 
     def get_code_delete_relation(self):
 
-        instruction = f'''MATCH{self.concept}-[r:{self.relation}]->{self.noeud2}\n DELETE r'''
+        instruction = f'''MATCH {self.concept}-[r:{self.relation}]->{self.noeud2}\n DELETE r'''
         return instruction
 
 
@@ -209,7 +210,7 @@ class ConceptRelationNode:
 
 if __name__ == '__main__':
     r = Relation('is', 'Caracteristique')
-    n1 = Concept('Pierre', 'Personne')
+    n1 = Concept('Pierre et anne', 'Personne ert 1')
 
     # n = (Concept(name='Pierre', category='personne'))
     n1.add_relation('petit', r)

@@ -181,8 +181,6 @@ class MainWindowQuestion(QWidget):
         self._question.setText(text)
 
 
-
-
 class InteractionMainWindowQuestion(MainWindowQuestion, InformationAPI):
     ''' Implement the interaction of the buttons with the server side '''
     def __init__(self):

@@ -38,7 +38,7 @@ class ImportExportObjectNeo4j():
 
         with self.saver.driver.session() as graphDB_Session:
 
-            instruction_node = "MATCH (c: " + category + "{name: '" + node_name + "'}) RETURN properties(c)"
+            instruction_node = "MATCH (c: `" + category + "`{name: '" + node_name + "'}) RETURN properties(c)"
             results = graphDB_Session.run(instruction_node).data()
             if len(results) == 0:
                 logger.warning(f"{category}:{node_name} does not exist")
@@ -46,7 +46,7 @@ class ImportExportObjectNeo4j():
             else:
                 load_concept = Concept(name=node_name, category=category, properties=results[0]['properties(c)'])
 
-            instruction_relation = "MATCH (c: " + category + "{name: '" + node_name + "'})-[r]->(t) RETURN labels(c), properties(c), r, properties(r) ,labels(t), properties(t)"
+            instruction_relation = "MATCH (c: `" + category + "`{name: '" + node_name + "'})-[r]->(t) RETURN labels(c), properties(c), r, properties(r) ,labels(t), properties(t)"
             results = graphDB_Session.run(instruction_relation).data()
             if len(results) == 0:
                 logger.warning(f"{category}:{node_name} does not have any relation")
@@ -83,9 +83,9 @@ class ImportExportObjectNeo4j():
 
         with self.saver.driver.session() as graphDB_Session:
             if category is None:
-                instruction_node = "MATCH (c) RETURN properties(c), labels(c)"
+                instruction_node = "MATCH (c) RETURN properties(c), labels(c) ORDER BY c.name"
             else:
-                instruction_node = "MATCH (c: " + category + ") RETURN properties(c), labels(c)"
+                instruction_node = "MATCH (c: `" + category + "`) RETURN properties(c), labels(c) ORDER BY c.name"
             results = graphDB_Session.run(instruction_node).data()
             concepts: [Concept] = []
             for result in results:
@@ -103,7 +103,7 @@ class ImportExportObjectNeo4j():
     def get_node_connected(self, concept: Node) -> List[Node]:
         output: List[Node] = []
         with self.saver.driver.session() as graphDB_Session:
-            instruction_relation = "MATCH (c: " + concept.categories[0] + "{name: '" + concept.name + "'})-[r]->(t) RETURN labels(t), properties(t)"
+            instruction_relation = "MATCH (c: `" + concept.categories[0] + "` {name: '" + concept.name + "'})-[r]-(t) RETURN labels(t), properties(t)"
             results = graphDB_Session.run(instruction_relation).data()
 
             for result in results:
@@ -112,6 +112,11 @@ class ImportExportObjectNeo4j():
                                    properties=result['properties(t)'])
                 output.append(node_target)
         return output
+
+    def delete_not_connected_node(self):
+
+        instruction = 'MATCH (n)\nWHERE NOT ()--(n)\nDELETE n'
+        self.send_instruction(instruction)
 
 
 
@@ -127,7 +132,7 @@ class ModifyConcept(ImportExportObjectNeo4j):
         ImportExportObjectNeo4j.__init__(self, saver)
 
         # check if the concept exist
-        self.instruction_match = "MATCH (n1:" + c_r_n.concept.categories[0] + " {name: '" + c_r_n.concept.name + "'})-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.noeud2.categories[0] + " {name: '" + c_r_n.noeud2.name + "'})"
+        self.instruction_match = "MATCH (n1:`" + c_r_n.concept.categories[0] + "` {name: '" + c_r_n.concept.name + "'})-[r:`" + c_r_n.relation.relation + "`]->(n2:`" + c_r_n.noeud2.categories[0] + "` {name: '" + c_r_n.noeud2.name + "'})"
         instruction = self.instruction_match + '\nRETURN n1, r, n2'
         results = self.send_instruction(instruction)
         assert len(results) == 1
@@ -176,9 +181,12 @@ class ModifyConcept(ImportExportObjectNeo4j):
         instruction = self.instruction_match + f"\nSET r.next = '{new_next}'"
         self.send_instruction(instruction)
 
+if __name__  == '__main__':
 
-# aa = ImportExportObjectNeo4j()
-# a = aa.get_all_relations()[0]
+    saver = SaverNeo4j()
+    aa = ImportExportObjectNeo4j(saver)
+    concept = aa.get_concept('Maman', 'Personne')
+    print(aa.get_node_connected(concept))
 # #
 # b = ModifyConcept(a)
 # b.increase_level()

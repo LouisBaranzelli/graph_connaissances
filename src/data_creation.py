@@ -135,8 +135,8 @@ class RelationWindow(ImportExportObjectNeo4j, QWidget):
             # empty string not accepted
             return
         existing_target = Node(name=name, category=self.lineedit_category.text())
-        existint_relation = ConceptRelationNode(concept=self.main_concept, relation=self.relation, noeud2=existing_target)
-        new_item = QListWidgetItemRelation(existint_relation)
+        existing_relation = ConceptRelationNode(concept=self.main_concept, relation=self.relation, noeud2=existing_target)
+        new_item = QListWidgetItemRelation(existing_relation)
         self.list_target.addItem(new_item)
 
     def __str__(self):
@@ -217,10 +217,12 @@ class MainWindow(ImportExportObjectNeo4j, QWidget):
 
         # Load the datas
         self.concepts = self.get_nodes()
+        self.relations = self.get_all_relations()
 
         self.list_concept = QListWidget(self)
         # list_concept.setGeometry(50, 70, 150, 60)
         # Create the list of concept
+
         for concept in self.concepts:
             new_item = QListWidgetItemConcept(concept)
             self.list_concept.addItem(new_item)
@@ -265,7 +267,7 @@ class MainWindow(ImportExportObjectNeo4j, QWidget):
         self.layout.addWidget(ref_button, 3, 0)
 
         # Create new relation with the suggestion
-        self.relation_names = set([relation.relation.name for relation in self.get_all_relations()])
+        self.relation_names = set([relation.relation.name for relation in self.relations])
         self.relation_name_entries = QCompleter(self.relation_names)
         self.relation_name_entries.setFilterMode(Qt.MatchContains)  # match not only the biginning of the world
         self.relation_name_entries.setCaseSensitivity(False)
@@ -283,15 +285,16 @@ class MainWindow(ImportExportObjectNeo4j, QWidget):
         self.create_button = QPushButton('Create new relation')
         icon_creation = QIcon(str(Path('create.png')))
         self.create_button.setIcon(icon_creation)
-        self.create_button.clicked.connect(self.create_relation)
         self.layout.addWidget(self.create_button, 4, 6)
 
         # action when we fulfill character
         # activate the change_autofill_concept_name if we touch the entry or the suggestions
         self.lineedit_name.textEdited.connect(self.change_autofill_concept_name)
         self.concept_name_entries.activated.connect(self.select_concept_name)
-        self.lineedit_category.textEdited.connect(self.change_autofill_concept_category)
+        self.lineedit_new_relation_name.textEdited.connect(self.autofill_relation_category)
+        self.relation_name_entries.activated.connect(self.autofill_relation_category)
         self.list_concept.itemClicked.connect(self.handle_item_clicked)
+        self.create_button.clicked.connect(self.create_relation)
 
         # # add the relations managments variable (updated when the fillin text name or category is modified)
         self.window_relationships = RelationWindows(saver=saver,
@@ -329,11 +332,24 @@ class MainWindow(ImportExportObjectNeo4j, QWidget):
 
     def refresh(self):
 
-        ''' Display all the existing node in the list box (update the display not refreshed if adding new target node of
-        a relation)'''
+        '''
+        Display all the existing node in the list box (update the display not refreshed if adding new target node of
+        a relation)
+        Refresh all the existing relations
+        '''
 
-        nodes = self.get_nodes()
-        for node in nodes:
+        self.relations = self.get_all_relations()
+        self.relation_names = set([relation.relation.name for relation in self.relations])
+        # update the name of relation ship
+        self.relation_name_entries = QCompleter(self.relation_names)
+        self.relation_name_entries.setModel(QStringListModel(self.relation_name_entries ))
+
+        self.delete_not_connected_node()
+
+
+        # update available nodes
+        self.concepts = self.get_nodes()
+        for node in self.concepts:
 
             new_item = QListWidgetItemConcept(node)
             # check idf not already in
@@ -373,14 +389,6 @@ class MainWindow(ImportExportObjectNeo4j, QWidget):
             return
         self.window_relationships.add_new_properties(name_relation=name_new_relation,
                                                      name_category=name_new_category)
-
-        # Update the auto completion if not already in
-        model = QStringListModel()
-        existing_entries = self.relation_name_entries.model().stringList()
-        if name_new_relation not in existing_entries:
-            existing_entries.append(name_new_relation)
-            model.setStringList(existing_entries)
-        self.relation_name_entries.setModel(model)
 
     def update_relationships(self) -> None:
         ''' Use the fillin text to find the right concept and load it properties if the concept exist'''
@@ -439,16 +447,13 @@ class MainWindow(ImportExportObjectNeo4j, QWidget):
         self.update_relationships()
 
 
-    def change_autofill_concept_category(self):
-
-        ''' When a concept name is fulfill update the choice of names'''
-
-        pass
-        # input = self.lineedit_category.text()
-        # motif = re.compile(input, re.IGNORECASE)
-        # self.concept_names = [concept.name for concept in self.concepts if bool(motif.match(concept.categories[0]))]
-        # self.refresh_concept_autofill()
-        # self.update_relationships()
+    def autofill_relation_category(self):
+        '''
+        If inut name of the relation exists, fulfill the category
+        '''
+        category_suggestion = [relation.relation.categories[0] for relation in self.relations if relation.relation.name.lower() == self.lineedit_new_relation_name.text().lower()]
+        if len(category_suggestion) > 0:
+            self.lineedit_new_relation_category.setText(category_suggestion[0])
 
     def handle_item_clicked(self, item):
         self.lineedit_category.setText(item.concept.categories[0])

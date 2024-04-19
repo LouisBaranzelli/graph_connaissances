@@ -58,7 +58,7 @@ class QuestionTypeOnConcept(QuestionType):
         self.c_r_n = c_r_n
         # get the matching results
 
-        instruction = "MATCH (n1)-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.noeud2.categories[0] + " {name: '" + c_r_n.noeud2.name + "'})\nRETURN n1"
+        instruction = "MATCH (n1)-[r:`" + c_r_n.relation.relation + "`]->(n2:`" + c_r_n.noeud2.categories[0] + "` {name: '" + c_r_n.noeud2.name + "'})\nRETURN n1"
         results = self.send_instruction(instruction)
 
         # generate the ConceptRelationNode list result
@@ -66,7 +66,7 @@ class QuestionTypeOnConcept(QuestionType):
 
         # get the NO matching results
         # tout les concept qui ont la meme relation mais qui ne pointe pas vers le meme noeud
-        instruction = f"MATCH (n1)-[:" + c_r_n.relation.relation + "]->(n2)\nWHERE  NOT (n1)-[:" + c_r_n.relation.relation + "]-(:" + c_r_n.noeud2.categories[0] + " {name: '" + c_r_n.noeud2.name + "'})\nRETURN n1"
+        instruction = f"MATCH (n1)-[:" + c_r_n.relation.relation + "]->(n2)\nWHERE  NOT (n1)-[:" + c_r_n.relation.relation + "]-(:`" + c_r_n.noeud2.categories[0] + "` {name: '" + c_r_n.noeud2.name + "'})\nRETURN n1"
 
         results = self.send_instruction(instruction)
 
@@ -81,12 +81,8 @@ class QuestionTypeOnConcept(QuestionType):
 
     def get_prompt(self) -> str:
 
-        options = list(self.true_results.keys()) + list(self.false_results.keys())
-        random.shuffle(options)
-        return f'''
-        Parmi ces elements: {','.join(options)},
-        Action: {self.c_r_n.relation}
-        Target: {self.c_r_n.noeud2}
+        return f''' 
+        [???] -- {self.c_r_n.relation.name} --> [{self.c_r_n.noeud2.name}]: {self.c_r_n.noeud2.categories[0]}
         '''
 
 
@@ -102,24 +98,16 @@ class SimpleQuestionOnConcept(QuestionTypeOnConcept):
         self.true_results = {'yes': c_r_n}
         self.false_results = {'No': c_r_n}
 
-    def get_prompt(self) -> str:
-
-        # only 1 answer
-        options = list(self.true_results.values())
-
-        # no alternative choice
-
-        random.shuffle(options)
-        return f'''
-        Qui ou quoi realise,
-        Action: {self.c_r_n.relation}
-        sur Target: {self.c_r_n.noeud2}
-        Connais tu la reponse
-        '''
 
     def is_valid(self) -> bool:
         return True
 
+    def get_prompt(self) -> str:
+
+        return f''' 
+        Do you know the answer:
+        [???] -- {self.c_r_n.relation.name} --> [{self.c_r_n.noeud2.name}]: {self.c_r_n.noeud2.categories[0]}
+        '''
 
 class QuestionTypeOnNode(QuestionType):
     '''
@@ -151,7 +139,7 @@ class QuestionTypeOnNode(QuestionType):
         self.c_r_n = c_r_n
         # get the matching results
 
-        instruction = "MATCH (n1:" + c_r_n.concept.categories[0] + " {name: '" + c_r_n.concept.name + "'})-[r:`" + c_r_n.relation.relation + "`]->(n2)\nRETURN n2"
+        instruction = "MATCH (n1:`" + c_r_n.concept.categories[0] + "` {name: '" + c_r_n.concept.name + "'})-[r:" + c_r_n.relation.relation + "]->(n2)\nRETURN n2"
         results1 = self.send_instruction(instruction)
 
         # generate the ConceptRelationNode list result
@@ -159,7 +147,7 @@ class QuestionTypeOnNode(QuestionType):
 
         # get the NO matching results: all the concept category with this relation ship
         # instruction = "MATCH (n1)-[r:`" + c_r_n.relation.relation + "`]->(n2:" + c_r_n.relation.categories[0] + ")\nRETURN n2"
-        instruction = f"MATCH (n1)-[:" + c_r_n.relation.relation + "]->(n2)\nWHERE  NOT (n1:" + c_r_n.concept.categories[0] + " {name: '" + c_r_n.concept.name + "'})-[:" + c_r_n.relation.relation + "]->(n2)\nRETURN n2"
+        instruction = f"MATCH (n1)-[:" + c_r_n.relation.relation + "]->(n2)\nWHERE  NOT (n1:`" + c_r_n.concept.categories[0] + "` {name: '" + c_r_n.concept.name + "'})-[:" + c_r_n.relation.relation + "]->(n2)\nRETURN n2"
         results2 = self.send_instruction(instruction)
 
         if len(results2) == 0:
@@ -185,9 +173,7 @@ class QuestionTypeOnNode(QuestionType):
         options = list(self.true_results.keys()) + list(self.false_results.keys())
         random.shuffle(options)
         return f'''
-        Parmi ces elements: {','.join(options)},
-        Action: {self.c_r_n.relation}
-        Sujet: {self.c_r_n.concept}
+        {self.c_r_n.concept.name} -- {self.c_r_n.relation.name} --> [???]: {self.c_r_n.noeud2.categories[0]}
         '''
 
 
@@ -212,10 +198,8 @@ class SimpleQuestionOnNode(QuestionTypeOnNode):
 
         random.shuffle(options)
         return f'''
-        Qu'est ce que {self.c_r_n.concept}
-        Action: {self.c_r_n.relation}
-       
-        Connais tu la reponse
+        Do you know the answer:
+        {self.c_r_n.concept.name} -- {self.c_r_n.relation.name} --> [???]: {self.c_r_n.noeud2.categories[0]}
         '''
 
 
